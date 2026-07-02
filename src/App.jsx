@@ -63,6 +63,8 @@ function buildLevelConfig(level) {
     visionRangeMult: 1 + step * 0.08,
     visionAngleMult: Math.min(1 + step * 0.05, 1.4),
     alarmMult: 1 + step * 0.15,
+    damage: Math.min(20, 6 + step * 1.2),
+    fireInterval: Math.max(0.35, 1.1 - step * 0.07),
   }
 }
 
@@ -76,6 +78,7 @@ function makeEnemies(config) {
     patrol: t.patrol,
     patrolIndex: 1,
     alive: true,
+    shootCooldown: 0.5,
   }))
 }
 
@@ -88,17 +91,32 @@ function circleHitsWalls(x, y, r) {
   return LEVEL_WALLS.some((w) => rectsOverlap(box, w))
 }
 
+function hasLineOfSight(x1, y1, x2, y2) {
+  const dist = Math.hypot(x2 - x1, y2 - y1)
+  const steps = Math.ceil(dist / 8)
+  for (let i = 1; i < steps; i++) {
+    const t = i / steps
+    const x = x1 + (x2 - x1) * t
+    const y = y1 + (y2 - y1) * t
+    if (LEVEL_WALLS.some((w) => x > w.x && x < w.x + w.w && y > w.y && y < w.y + w.h)) {
+      return false
+    }
+  }
+  return true
+}
+
 export default function App() {
   const canvasRef = useRef(null)
   const keysRef = useRef({})
   const stateRef = useRef(null)
   const startLevelRef = useRef(() => {})
-  const [hud, setHud] = useState({ kills: 0, total: 3, alarmed: false, prompt: false })
+  const [hud, setHud] = useState({ kills: 0, total: 3, alarmed: false, prompt: false, health: 100 })
   const [killcam, setKillcam] = useState(null)
   const [phase, setPhase] = useState('playing')
   const [level, setLevel] = useState(1)
   const [summary, setSummary] = useState(null)
   const [equipped, setEquipped] = useState('fists')
+  const [hitFlash, setHitFlash] = useState(0)
   const phaseRef = useRef(phase)
   phaseRef.current = phase
 
@@ -106,7 +124,7 @@ export default function App() {
     stateRef.current = {
       level: 1,
       levelConfig: buildLevelConfig(1),
-      player: { x: 80, y: 300, angle: 0, crouched: false },
+      player: { x: 80, y: 300, angle: 0, crouched: false, health: 100 },
       enemies: [],
       alarmed: false,
       alarmTimer: 0,
@@ -114,6 +132,8 @@ export default function App() {
       lastKillTime: performance.now(),
       ratingHistory: [],
       equippedWeaponId: 'fists',
+      tracers: [],
+      dead: false,
     }
 
     function startLevel(levelNum) {
@@ -121,16 +141,18 @@ export default function App() {
       const config = buildLevelConfig(levelNum)
       s.level = levelNum
       s.levelConfig = config
-      s.player = { x: 80, y: 300, angle: 0, crouched: false }
+      s.player = { x: 80, y: 300, angle: 0, crouched: false, health: 100 }
       s.enemies = makeEnemies(config)
       s.alarmed = false
       s.alarmTimer = 0
       s.inKillcam = false
       s.lastKillTime = performance.now()
       s.equippedWeaponId = WEAPONS[levelNum - 1].id
+      s.tracers = []
+      s.dead = false
       setLevel(levelNum)
       setEquipped(s.equippedWeaponId)
-      setHud({ kills: 0, total: config.enemyCount, alarmed: false, prompt: false })
+      setHud({ kills: 0, total: config.enemyCount, alarmed: false, prompt: false, health: 100 })
       setKillcam(null)
       setSummary(null)
       setPhase('playing')
@@ -254,10 +276,27 @@ export default function App() {
           const baseRange = p.crouched ? 90 : 180
           const visionRange = baseRange * config.visionRangeMult
           const visionAngle = (Math.PI / 4) * config.visionAngleMult
+          const canSee =
+            dist < visionRange && angleDiff < visionAngle && hasLineOfSight(en.x, en.y, p.x, p.y)
 
-          if (dist < visionRange && angleDiff < visionAngle) {
+          if (canSee) {
             s.alarmed = true
             s.alarmTimer = 2.5 * config.alarmMult
+
+            en.shootCooldown -= dt
+            if (en.shootCooldown <= 0 && p.health > 0) {
+              en.shootCooldown = config.fireInterval
+              p.health = Math.max(0, p.health - config.damage)
+              s.tracers.push({ x1: en.x, y1: en.y, x2: p.x, y2: p.y, time: now })
+              setHitFlash(now)
+              if (p.health <= 0 && !s.dead) {
+                s.dead = true
+                s.inKillcam = true
+                setPhase('gameOver')
+              }
+            }
+          } else {
+            en.shootCooldown = Math.min(en.shootCooldown + dt, 0.5)
           }
 
           const behindAngle = Math.abs(((angleToPlayer - en.angle + Math.PI * 3) % (2 * Math.PI)) - Math.PI)
@@ -278,7 +317,7 @@ export default function App() {
           triggerKillcam(nearestBackstab)
         }
 
-        setHud((h) => ({ ...h, alarmed: s.alarmed, prompt: canKill }))
+        setHud((h) => ({ ...h, alarmed: s.alarmed, prompt: canKill, health: p.health }))
       }
 
       ctx.fillStyle = '#0b0b0d'
@@ -312,6 +351,18 @@ export default function App() {
         ctx.moveTo(en.x, en.y)
         ctx.lineTo(en.x + Math.cos(en.angle) * 16, en.y + Math.sin(en.angle) * 16)
         ctx.stroke()
+      }
+
+      s.tracers = s.tracers.filter((t) => now - t.time < 150)
+      for (const t of s.tracers) {
+        const alpha = 1 - (now - t.time) / 150
+        ctx.strokeStyle = `rgba(255,120,40,${alpha})`
+        ctx.lineWidth = 2
+        ctx.beginPath()
+        ctx.moveTo(t.x1, t.y1)
+        ctx.lineTo(t.x2, t.y2)
+        ctx.stroke()
+        ctx.lineWidth = 1
       }
 
       const p = s.player
@@ -349,6 +400,10 @@ export default function App() {
           {hud.alarmed ? 'ALERT' : 'UNDETECTED'}
         </span>
       </div>
+      <div className="health-bar">
+        <div className="health-fill" style={{ width: `${Math.max(0, hud.health)}%` }} />
+        <span className="health-label">{Math.max(0, Math.round(hud.health))} HP</span>
+      </div>
       <div className="weapon-bar">
         {WEAPONS.map((w, i) => {
           const unlocked = w.unlockLevel <= level
@@ -369,6 +424,7 @@ export default function App() {
       </div>
       <div className="canvas-wrap">
         <canvas ref={canvasRef} width={900} height={600} />
+        {hitFlash > 0 && <div key={hitFlash} className="hit-flash" />}
         {hud.prompt && !killcam && phase === 'playing' && (
           <div className="prompt">Press E to execute — {WEAPONS.find((w) => w.id === equipped)?.name}</div>
         )}
@@ -393,6 +449,17 @@ export default function App() {
             </div>
           </div>
         )}
+        {phase === 'gameOver' && (
+          <div className="end-screen">
+            <div>
+              <h2>YOU DIED</h2>
+              <p>Gunned down on Level {level}</p>
+              <button className="cta" onClick={() => startLevelRef.current(level)}>
+                Retry Level {level}
+              </button>
+            </div>
+          </div>
+        )}
         {phase === 'gameComplete' && summary && (
           <div className="end-screen">
             <div>
@@ -410,7 +477,8 @@ export default function App() {
       </div>
       <p className="hint">
         WASD/Arrows move · Shift crouch · Approach an enemy from behind, undetected · E to execute
-        · number keys switch weapon
+        · number keys switch weapon · staying in a guard's red cone gets you shot — break line of
+        sight behind walls
       </p>
     </div>
   )
