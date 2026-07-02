@@ -105,9 +105,63 @@ function hasLineOfSight(x1, y1, x2, y2) {
   return true
 }
 
+function Joystick({ moveRef }) {
+  const baseRef = useRef(null)
+  const knobRef = useRef(null)
+  const activeId = useRef(null)
+  const radius = 45
+
+  function updateFromEvent(e) {
+    const rect = baseRef.current.getBoundingClientRect()
+    const cx = rect.left + rect.width / 2
+    const cy = rect.top + rect.height / 2
+    let dx = e.clientX - cx
+    let dy = e.clientY - cy
+    const dist = Math.hypot(dx, dy)
+    if (dist > radius) {
+      dx = (dx / dist) * radius
+      dy = (dy / dist) * radius
+    }
+    moveRef.current = dist < 8 ? { x: 0, y: 0 } : { x: dx / radius, y: dy / radius }
+    if (knobRef.current) knobRef.current.style.transform = `translate(${dx}px, ${dy}px)`
+  }
+
+  function onPointerDown(e) {
+    e.currentTarget.setPointerCapture(e.pointerId)
+    activeId.current = e.pointerId
+    updateFromEvent(e)
+  }
+  function onPointerMove(e) {
+    if (activeId.current !== e.pointerId) return
+    updateFromEvent(e)
+  }
+  function onPointerUp(e) {
+    if (activeId.current !== e.pointerId) return
+    activeId.current = null
+    moveRef.current = { x: 0, y: 0 }
+    if (knobRef.current) knobRef.current.style.transform = 'translate(0px, 0px)'
+  }
+
+  return (
+    <div
+      className="joystick-base"
+      ref={baseRef}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerUp}
+    >
+      <div className="joystick-knob" ref={knobRef} />
+    </div>
+  )
+}
+
 export default function App() {
   const canvasRef = useRef(null)
   const keysRef = useRef({})
+  const touchMoveRef = useRef({ x: 0, y: 0 })
+  const touchCrouchRef = useRef(false)
+  const touchExecuteRef = useRef(false)
   const stateRef = useRef(null)
   const startLevelRef = useRef(() => {})
   const [hud, setHud] = useState({ kills: 0, total: 3, alarmed: false, prompt: false, health: 100 })
@@ -231,7 +285,7 @@ export default function App() {
 
       if (!s.inKillcam && phaseRef.current === 'playing') {
         const p = s.player
-        p.crouched = !!keys['shift']
+        p.crouched = !!keys['shift'] || touchCrouchRef.current
         const moveSpeed = p.crouched ? 60 : 130
         let dx = 0
         let dy = 0
@@ -239,6 +293,8 @@ export default function App() {
         if (keys['s'] || keys['arrowdown']) dy += 1
         if (keys['a'] || keys['arrowleft']) dx -= 1
         if (keys['d'] || keys['arrowright']) dx += 1
+        dx += touchMoveRef.current.x
+        dy += touchMoveRef.current.y
         if (dx !== 0 || dy !== 0) {
           const len = Math.hypot(dx, dy)
           dx /= len
@@ -313,9 +369,10 @@ export default function App() {
         }
 
         const canKill = !!nearestBackstab
-        if (canKill && keys['e']) {
+        if (canKill && (keys['e'] || touchExecuteRef.current)) {
           triggerKillcam(nearestBackstab)
         }
+        touchExecuteRef.current = false
 
         setHud((h) => ({ ...h, alarmed: s.alarmed, prompt: canKill, health: p.health }))
       }
@@ -410,6 +467,11 @@ export default function App() {
           return (
             <span
               key={w.id}
+              onClick={() => {
+                if (!unlocked) return
+                stateRef.current.equippedWeaponId = w.id
+                setEquipped(w.id)
+              }}
               className={
                 'weapon-slot' +
                 (unlocked ? '' : ' locked') +
@@ -474,10 +536,37 @@ export default function App() {
             </div>
           </div>
         )}
+        {phase === 'playing' && (
+          <div className="touch-controls">
+            <Joystick moveRef={touchMoveRef} />
+            <div className="touch-buttons">
+              <button
+                className="touch-btn crouch"
+                onPointerDown={() => { touchCrouchRef.current = true }}
+                onPointerUp={() => { touchCrouchRef.current = false }}
+                onPointerLeave={() => { touchCrouchRef.current = false }}
+                onPointerCancel={() => { touchCrouchRef.current = false }}
+              >
+                CROUCH
+              </button>
+              <button
+                className={'touch-btn execute' + (hud.prompt ? ' ready' : '')}
+                onPointerDown={() => { touchExecuteRef.current = true }}
+              >
+                KILL
+              </button>
+            </div>
+          </div>
+        )}
       </div>
-      <p className="hint">
+      <p className="hint desktop-hint">
         WASD/Arrows move · Shift crouch · Approach an enemy from behind, undetected · E to execute
         · number keys switch weapon · staying in a guard's red cone gets you shot — break line of
+        sight behind walls
+      </p>
+      <p className="hint touch-hint">
+        Left stick to move · CROUCH to sneak · tap a weapon to equip · get behind a guard,
+        undetected, and tap KILL · staying in a guard's red cone gets you shot — break line of
         sight behind walls
       </p>
     </div>
