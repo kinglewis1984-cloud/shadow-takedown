@@ -171,8 +171,13 @@ export default function App() {
   const [summary, setSummary] = useState(null)
   const [equipped, setEquipped] = useState('fists')
   const [hitFlash, setHitFlash] = useState(0)
+  const [isTouch, setIsTouch] = useState(false)
   const phaseRef = useRef(phase)
   phaseRef.current = phase
+
+  useEffect(() => {
+    setIsTouch('ontouchstart' in window || navigator.maxTouchPoints > 0)
+  }, [])
 
   useEffect(() => {
     stateRef.current = {
@@ -536,7 +541,7 @@ export default function App() {
             </div>
           </div>
         )}
-        {phase === 'playing' && (
+        {isTouch && phase === 'playing' && (
           <div className="touch-controls">
             <Joystick moveRef={touchMoveRef} />
             <div className="touch-buttons">
@@ -559,16 +564,19 @@ export default function App() {
           </div>
         )}
       </div>
-      <p className="hint desktop-hint">
-        WASD/Arrows move · Shift crouch · Approach an enemy from behind, undetected · E to execute
-        · number keys switch weapon · staying in a guard's red cone gets you shot — break line of
-        sight behind walls
-      </p>
-      <p className="hint touch-hint">
-        Left stick to move · CROUCH to sneak · tap a weapon to equip · get behind a guard,
-        undetected, and tap KILL · staying in a guard's red cone gets you shot — break line of
-        sight behind walls
-      </p>
+      {isTouch ? (
+        <p className="hint">
+          Left stick to move · CROUCH to sneak · tap a weapon to equip · get behind a guard,
+          undetected, and tap KILL · staying in a guard's red cone gets you shot — break line of
+          sight behind walls
+        </p>
+      ) : (
+        <p className="hint">
+          WASD/Arrows move · Shift crouch · Approach an enemy from behind, undetected · E to execute
+          · number keys switch weapon · staying in a guard's red cone gets you shot — break line of
+          sight behind walls
+        </p>
+      )}
     </div>
   )
 }
