@@ -9,6 +9,23 @@ const RATINGS = [
   { name: 'GRUESOME', min: 2 },
 ]
 
+// One weapon unlocks per level (hotkeys 1-9, 0 for the 10th). Weapons
+// unlocked later carry a brutality bonus so they can push a kill up to
+// GRUESOME even without a perfectly stealthy, fast approach — a way to
+// offset guards getting harder to sneak past in later levels.
+const WEAPONS = [
+  { id: 'fists', name: 'Bare Hands', killLabel: 'STRANGLED', unlockLevel: 1, bonus: 0 },
+  { id: 'wire', name: 'Wire Garrote', killLabel: 'GARROTED', unlockLevel: 2, bonus: 0 },
+  { id: 'shard', name: 'Glass Shard', killLabel: 'SLASHED', unlockLevel: 3, bonus: 0 },
+  { id: 'bag', name: 'Plastic Bag', killLabel: 'SUFFOCATED', unlockLevel: 4, bonus: 0 },
+  { id: 'crowbar', name: 'Crowbar', killLabel: 'CRUSHED', unlockLevel: 5, bonus: 0 },
+  { id: 'knife', name: 'Combat Knife', killLabel: 'STABBED', unlockLevel: 6, bonus: 1 },
+  { id: 'rope', name: 'Rope', killLabel: 'HANGED', unlockLevel: 7, bonus: 1 },
+  { id: 'hatchet', name: 'Hatchet', killLabel: 'CHOPPED', unlockLevel: 8, bonus: 1 },
+  { id: 'hacksaw', name: 'Hacksaw', killLabel: 'SAWED', unlockLevel: 9, bonus: 1 },
+  { id: 'chainsaw', name: 'Chainsaw', killLabel: 'SHREDDED', unlockLevel: 10, bonus: 1 },
+]
+
 const LEVEL_WALLS = [
   { x: 0, y: 0, w: 900, h: 20 },
   { x: 0, y: 580, w: 900, h: 20 },
@@ -81,6 +98,7 @@ export default function App() {
   const [phase, setPhase] = useState('playing')
   const [level, setLevel] = useState(1)
   const [summary, setSummary] = useState(null)
+  const [equipped, setEquipped] = useState('fists')
   const phaseRef = useRef(phase)
   phaseRef.current = phase
 
@@ -95,6 +113,7 @@ export default function App() {
       inKillcam: false,
       lastKillTime: performance.now(),
       ratingHistory: [],
+      equippedWeaponId: 'fists',
     }
 
     function startLevel(levelNum) {
@@ -108,7 +127,9 @@ export default function App() {
       s.alarmTimer = 0
       s.inKillcam = false
       s.lastKillTime = performance.now()
+      s.equippedWeaponId = WEAPONS[levelNum - 1].id
       setLevel(levelNum)
+      setEquipped(s.equippedWeaponId)
       setHud({ kills: 0, total: config.enemyCount, alarmed: false, prompt: false })
       setKillcam(null)
       setSummary(null)
@@ -124,6 +145,12 @@ export default function App() {
 
     const onKeyDown = (e) => {
       keysRef.current[e.key.toLowerCase()] = true
+      const s = stateRef.current
+      const slot = e.key === '0' ? 9 : Number(e.key) - 1
+      if (Number.isInteger(slot) && slot >= 0 && slot < s.level && WEAPONS[slot]) {
+        s.equippedWeaponId = WEAPONS[slot].id
+        setEquipped(s.equippedWeaponId)
+      }
     }
     const onKeyUp = (e) => {
       keysRef.current[e.key.toLowerCase()] = false
@@ -143,14 +170,15 @@ export default function App() {
       const timeSinceLast = (now - s.lastKillTime) / 1000
       s.lastKillTime = now
       enemy.alive = false
+      const weapon = WEAPONS.find((w) => w.id === s.equippedWeaponId) || WEAPONS[0]
       const stealthy = !s.alarmed
       const speedBonus = timeSinceLast < 4 ? 1 : 0
       const stealthBonus = stealthy ? 1 : 0
-      const score = Math.min(2, speedBonus + stealthBonus)
+      const score = Math.min(2, speedBonus + stealthBonus + weapon.bonus)
       const rating = RATINGS.slice().reverse().find((r) => score >= r.min).name
       s.ratingHistory.push(rating)
 
-      setKillcam({ rating })
+      setKillcam({ rating, weaponLabel: weapon.killLabel })
       setTimeout(() => {
         setKillcam(null)
         s.inKillcam = false
@@ -321,17 +349,38 @@ export default function App() {
           {hud.alarmed ? 'ALERT' : 'UNDETECTED'}
         </span>
       </div>
+      <div className="weapon-bar">
+        {WEAPONS.map((w, i) => {
+          const unlocked = w.unlockLevel <= level
+          return (
+            <span
+              key={w.id}
+              className={
+                'weapon-slot' +
+                (unlocked ? '' : ' locked') +
+                (equipped === w.id ? ' active' : '')
+              }
+            >
+              <span className="key">{i === 9 ? 0 : i + 1}</span>
+              {unlocked ? w.name : '???'}
+            </span>
+          )
+        })}
+      </div>
       <div className="canvas-wrap">
         <canvas ref={canvasRef} width={900} height={600} />
         {hud.prompt && !killcam && phase === 'playing' && (
-          <div className="prompt">Press E to execute</div>
+          <div className="prompt">Press E to execute — {WEAPONS.find((w) => w.id === equipped)?.name}</div>
         )}
         {killcam && (
           <div className="killcam">
             <div className="bar top" />
             <div className="bar bottom" />
             <div className="flash" />
-            <div className="killcam-text">{killcam.rating}</div>
+            <div className="killcam-text">
+              {killcam.weaponLabel}
+              <span className="killcam-rating">{killcam.rating}</span>
+            </div>
           </div>
         )}
         {phase === 'levelComplete' && summary && (
@@ -361,6 +410,7 @@ export default function App() {
       </div>
       <p className="hint">
         WASD/Arrows move · Shift crouch · Approach an enemy from behind, undetected · E to execute
+        · number keys switch weapon
       </p>
     </div>
   )
