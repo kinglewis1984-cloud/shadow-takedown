@@ -99,46 +99,94 @@ body {
 }
 
 .weapon-bar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  justify-content: center;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+  gap: 10px;
   max-width: 900px;
+  width: 100%;
   margin-bottom: 10px;
-  font-size: 12px;
 }
 
-.weapon-slot {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  border: 1px solid #333;
-  padding: 4px 8px;
-  color: #666;
+.weapon-card {
+  position: relative;
+  background: linear-gradient(#1f1f1f, #0a0a0a);
+  border: 2px solid #333;
+  border-radius: 8px;
+  padding: 8px 6px;
   cursor: pointer;
   user-select: none;
+  transition: all 0.2s;
+  text-align: center;
 }
 
-.weapon-slot .key {
-  background: #222;
-  border: 1px solid #444;
-  padding: 0 5px;
-  color: #aaa;
+.weapon-card:hover {
+  border-color: #666;
 }
 
-.weapon-slot.locked {
+.weapon-card.locked {
   opacity: 0.4;
+  cursor: default;
 }
 
-.weapon-slot.active {
+.weapon-card.active {
   border-color: #c0392b;
-  color: #eee;
+  box-shadow: 0 0 12px rgba(192, 57, 43, 0.5);
 }
 
-.weapon-slot.active .key {
-  background: #c0392b;
-  border-color: #c0392b;
-  color: #fff;
+.weapon-card-num {
+  position: absolute;
+  top: 4px;
+  left: 6px;
+  font-size: 11px;
+  color: #ffcc00;
+  font-weight: bold;
+}
+
+.weapon-card-icon {
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 6px 0 4px;
+}
+
+.weapon-card-icon svg {
+  width: 44px;
+  height: 44px;
+}
+
+.weapon-card-label {
+  font-size: 11px;
+  color: #ccc;
+  min-height: 2.4em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.unlock-popup {
+  margin: 14px auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.unlock-popup .weapon-card {
+  width: 120px;
+  cursor: default;
+}
+
+.unlock-popup .weapon-card-icon svg {
+  width: 64px;
+  height: 64px;
+}
+
+.unlock-label {
+  color: #ffcc00;
+  font-size: 13px;
+  letter-spacing: 3px;
+  margin: 0;
 }
 
 .canvas-wrap {

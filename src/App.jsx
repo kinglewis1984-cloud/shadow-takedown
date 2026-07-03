@@ -41,6 +41,145 @@ const WEAPONS = [
   { id: 'flame', name: 'Flamethrower', killLabel: 'INCINERATED', unlockLevel: 20, bonus: 3 },
 ]
 
+// Hand-drawn line-art icon for each weapon's card, keyed by weapon id.
+const WEAPON_ICONS = {
+  fists: (
+    <svg viewBox="0 0 100 100">
+      <path d="M28 38 Q22 52 32 68 Q45 78 55 70 Q68 75 75 55 Q78 38 65 30 Q48 22 28 38" fill="#f4c38e" stroke="#d4a06a" strokeWidth="6" />
+      <circle cx="38" cy="45" r="7" fill="#e8b37d" />
+      <circle cx="52" cy="42" r="6.5" fill="#e8b37d" />
+      <circle cx="65" cy="48" r="5" fill="#e8b37d" />
+    </svg>
+  ),
+  wire: (
+    <svg viewBox="0 0 100 100">
+      <circle cx="50" cy="42" r="28" fill="none" stroke="#333" strokeWidth="14" />
+      <circle cx="50" cy="42" r="19" fill="none" stroke="#555" strokeWidth="5" />
+      <rect x="32" y="68" width="36" height="10" rx="3" fill="#222" />
+      <line x1="35" y1="73" x2="65" y2="73" stroke="#777" strokeWidth="3" />
+    </svg>
+  ),
+  shard: (
+    <svg viewBox="0 0 100 100">
+      <polygon points="32,18 68,72 22,82" fill="#9be3ff" stroke="#1e5a8c" strokeWidth="10" />
+      <polygon points="40,35 58,65 35,75" fill="#c5f0ff" opacity="0.7" />
+    </svg>
+  ),
+  bag: (
+    <svg viewBox="0 0 100 100">
+      <path d="M28 32 Q28 22 38 18 Q50 12 70 25 Q78 38 72 68 Q65 78 35 78 Q25 65 28 32" fill="#a8e0ff" stroke="#1a3a5c" strokeWidth="8" />
+      <rect x="35" y="78" width="32" height="9" fill="#222" />
+    </svg>
+  ),
+  crowbar: (
+    <svg viewBox="0 0 100 100">
+      <rect x="28" y="18" width="14" height="68" rx="4" fill="#4a4a4a" transform="rotate(-12 32 55)" />
+      <path d="M28 22 Q15 12 8 28" fill="none" stroke="#4a4a4a" strokeWidth="22" strokeLinecap="round" />
+      <rect x="22" y="18" width="8" height="12" fill="#333" />
+    </svg>
+  ),
+  knife: (
+    <svg viewBox="0 0 100 100">
+      <polygon points="75,50 22,32 28,50 22,68" fill="#c0c0c0" stroke="#222" strokeWidth="8" />
+      <rect x="15" y="45" width="22" height="11" rx="2" fill="#222" />
+      <line x1="30" y1="38" x2="65" y2="50" stroke="#ddd" strokeWidth="3" />
+    </svg>
+  ),
+  rope: (
+    <svg viewBox="0 0 100 100">
+      <path d="M30 28 Q48 12 70 32 Q52 55 35 72 Q52 82 72 58" fill="none" stroke="#8b5a2b" strokeWidth="16" strokeLinecap="round" />
+      <path d="M30 28 Q48 12 70 32 Q52 55 35 72 Q52 82 72 58" fill="none" stroke="#d4a06a" strokeWidth="6" strokeLinecap="round" />
+    </svg>
+  ),
+  hatchet: (
+    <svg viewBox="0 0 100 100">
+      <rect x="48" y="18" width="13" height="62" fill="#8b5a2b" rx="2" />
+      <polygon points="28,22 72,22 80,48 20,48" fill="#555" stroke="#333" strokeWidth="6" />
+    </svg>
+  ),
+  hacksaw: (
+    <svg viewBox="0 0 100 100">
+      <rect x="18" y="55" width="68" height="14" rx="3" fill="#444" />
+      <path d="M22 58 L78 58" fill="none" stroke="#ddd" strokeWidth="5" />
+      <rect x="22" y="28" width="10" height="32" fill="#333" rx="2" />
+    </svg>
+  ),
+  chainsaw: (
+    <svg viewBox="0 0 100 100">
+      <rect x="18" y="35" width="58" height="32" rx="4" fill="#333" />
+      <rect x="24" y="40" width="48" height="22" fill="#222" />
+      <polygon points="28,45 34,39 39,45" fill="#ddd" />
+      <polygon points="43,45 49,39 54,45" fill="#ddd" />
+      <polygon points="58,45 64,39 69,45" fill="#ddd" />
+      <rect x="72" y="34" width="14" height="33" fill="#555" />
+      <circle cx="78" cy="50" r="6" fill="#111" />
+    </svg>
+  ),
+  machete: (
+    <svg viewBox="0 0 100 100">
+      <path d="M20 78 L70 20 L80 28 L34 84 Z" fill="#c9d1d6" stroke="#222" strokeWidth="5" />
+      <rect x="8" y="68" width="26" height="13" rx="3" fill="#5a3a20" transform="rotate(-42 21 74)" />
+    </svg>
+  ),
+  fireaxe: (
+    <svg viewBox="0 0 100 100">
+      <rect x="46" y="15" width="10" height="70" fill="#7a4a20" rx="2" />
+      <polygon points="30,20 66,20 78,42 30,50" fill="#d84b2a" stroke="#5a1a10" strokeWidth="5" />
+    </svg>
+  ),
+  nailgun: (
+    <svg viewBox="0 0 100 100">
+      <rect x="20" y="35" width="45" height="28" rx="6" fill="#e0a020" stroke="#7a5000" strokeWidth="4" />
+      <rect x="30" y="63" width="14" height="24" rx="3" fill="#333" />
+      <rect x="65" y="44" width="22" height="6" fill="#888" />
+      <polygon points="87,42 95,47 87,52" fill="#ccc" />
+    </svg>
+  ),
+  razor: (
+    <svg viewBox="0 0 100 100">
+      <path d="M25 30 L75 50 L30 62 Z" fill="#d8d8d8" stroke="#222" strokeWidth="4" />
+      <rect x="15" y="55" width="30" height="10" rx="4" fill="#3a2a1a" transform="rotate(18 30 60)" />
+    </svg>
+  ),
+  barbwire: (
+    <svg viewBox="0 0 100 100">
+      <path d="M15 50 Q30 20 45 50 Q60 80 75 50 Q85 30 92 50" fill="none" stroke="#777" strokeWidth="5" />
+      <path d="M30 35 l6 -6 M30 35 l-6 -6 M60 65 l6 6 M60 65 l-6 6" stroke="#999" strokeWidth="3" />
+    </svg>
+  ),
+  cleaver: (
+    <svg viewBox="0 0 100 100">
+      <rect x="30" y="20" width="45" height="35" rx="4" fill="#cfd6da" stroke="#222" strokeWidth="5" />
+      <rect x="15" y="55" width="22" height="12" rx="4" fill="#3a2a1a" />
+    </svg>
+  ),
+  sledge: (
+    <svg viewBox="0 0 100 100">
+      <rect x="46" y="35" width="9" height="55" fill="#7a4a20" rx="2" />
+      <rect x="20" y="15" width="55" height="26" rx="5" fill="#555" stroke="#222" strokeWidth="5" />
+    </svg>
+  ),
+  beartrap: (
+    <svg viewBox="0 0 100 100">
+      <circle cx="50" cy="55" r="30" fill="none" stroke="#444" strokeWidth="8" />
+      <path d="M25 40 L35 55 L25 60 M75 40 L65 55 L75 60 M50 25 L45 40 L55 40" fill="none" stroke="#888" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  ),
+  circsaw: (
+    <svg viewBox="0 0 100 100">
+      <circle cx="50" cy="50" r="32" fill="none" stroke="#333" strokeWidth="6" strokeDasharray="4 4" />
+      <circle cx="50" cy="50" r="24" fill="#999" stroke="#333" strokeWidth="4" />
+      <circle cx="50" cy="50" r="8" fill="#333" />
+    </svg>
+  ),
+  flame: (
+    <svg viewBox="0 0 100 100">
+      <rect x="15" y="55" width="30" height="14" rx="4" fill="#444" />
+      <path d="M55 80 Q40 60 55 40 Q60 55 70 50 Q65 65 75 70 Q65 85 55 80" fill="#ff7a1a" stroke="#c0392b" strokeWidth="3" />
+    </svg>
+  ),
+}
+
 const LEVEL_WALLS_PART1 = [
   { x: 0, y: 0, w: 900, h: 20 },
   { x: 0, y: 580, w: 900, h: 20 },
@@ -166,6 +305,19 @@ function hasLineOfSight(x1, y1, x2, y2, walls) {
     }
   }
   return true
+}
+
+function WeaponCard({ weapon, keyLabel, unlocked, active, onClick }) {
+  return (
+    <div
+      className={'weapon-card' + (unlocked ? '' : ' locked') + (active ? ' active' : '')}
+      onClick={unlocked ? onClick : undefined}
+    >
+      {keyLabel !== undefined && <div className="weapon-card-num">{keyLabel}</div>}
+      <div className="weapon-card-icon">{unlocked ? WEAPON_ICONS[weapon.id] : '?'}</div>
+      <div className="weapon-card-label">{unlocked ? weapon.name : '???'}</div>
+    </div>
+  )
 }
 
 function Joystick({ moveRef }) {
@@ -337,7 +489,12 @@ export default function App() {
               setSummary({ counts, totalKills: s.ratingHistory.length })
               setPhase('gameComplete')
             } else {
-              setSummary({ counts: null, clearedLevel: s.level, enteringPart2: s.level === PART_ONE_LEVELS })
+              setSummary({
+                counts: null,
+                clearedLevel: s.level,
+                enteringPart2: s.level === PART_ONE_LEVELS,
+                unlockedWeapon: WEAPONS[s.level],
+              })
               setPhase('levelComplete')
             }
           }
@@ -534,27 +691,19 @@ export default function App() {
         <span className="health-label">{Math.max(0, Math.round(hud.health))} HP</span>
       </div>
       <div className="weapon-bar">
-        {WEAPONS.map((w, i) => {
-          const unlocked = w.unlockLevel <= level
-          return (
-            <span
-              key={w.id}
-              onClick={() => {
-                if (!unlocked) return
-                stateRef.current.equippedWeaponId = w.id
-                setEquipped(w.id)
-              }}
-              className={
-                'weapon-slot' +
-                (unlocked ? '' : ' locked') +
-                (equipped === w.id ? ' active' : '')
-              }
-            >
-              <span className="key">{i < 10 ? (i === 9 ? 0 : i + 1) : '•'}</span>
-              {unlocked ? w.name : '???'}
-            </span>
-          )
-        })}
+        {WEAPONS.map((w, i) => (
+          <WeaponCard
+            key={w.id}
+            weapon={w}
+            keyLabel={i < 10 ? (i === 9 ? 0 : i + 1) : '•'}
+            unlocked={w.unlockLevel <= level}
+            active={equipped === w.id}
+            onClick={() => {
+              stateRef.current.equippedWeaponId = w.id
+              setEquipped(w.id)
+            }}
+          />
+        ))}
       </div>
       <div className="canvas-wrap">
         <canvas ref={canvasRef} width={900} height={600} />
@@ -578,6 +727,12 @@ export default function App() {
             <div>
               <h2>LEVEL {summary.clearedLevel} COMPLETE</h2>
               {summary.enteringPart2 && <p className="part-banner">PART TWO BEGINS</p>}
+              {summary.unlockedWeapon && (
+                <div className="unlock-popup">
+                  <p className="unlock-label">NEW WEAPON UNLOCKED</p>
+                  <WeaponCard weapon={summary.unlockedWeapon} unlocked active={false} />
+                </div>
+              )}
               <button className="cta" onClick={() => startLevelRef.current(level + 1)}>
                 Continue to Level {level + 1}
               </button>
