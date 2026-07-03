@@ -11,11 +11,13 @@ const RATINGS = [
   { name: 'SAVAGE', min: 3 },
 ]
 
-// One weapon unlocks per level (hotkeys 1-9, 0 for the 10th, cycling for
-// levels 11-20). Weapons unlocked later carry a bigger brutality bonus so
-// they can push a kill rating up without needing a perfectly stealthy,
-// fast approach — Part Two's weapons (11-20) can reach the new SAVAGE tier
-// on their own, the way Part One's late weapons could reach GRUESOME.
+// One weapon unlocks per level. Weapons 1-10 (Part One) have hotkeys 1-9
+// and 0; weapons 11-20 (Part Two) are click/tap-to-equip only, since there
+// aren't enough number keys. Weapons unlocked later carry a bigger
+// brutality bonus so they can push a kill rating up without needing a
+// perfectly stealthy, fast approach — Part Two's weapons can reach the
+// new SAVAGE tier on their own, the way Part One's late weapons could
+// reach GRUESOME on their own.
 const WEAPONS = [
   { id: 'fists', name: 'Bare Hands', killLabel: 'STRANGLED', unlockLevel: 1, bonus: 0 },
   { id: 'wire', name: 'Wire Garrote', killLabel: 'GARROTED', unlockLevel: 2, bonus: 0 },
