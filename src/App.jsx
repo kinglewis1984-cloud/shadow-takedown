@@ -3,6 +3,23 @@ import './App.css'
 
 const TOTAL_LEVELS = 20
 const PART_ONE_LEVELS = 10
+const BESTS_KEY = 'shadowTakedownBests'
+
+function loadBests() {
+  try {
+    return JSON.parse(localStorage.getItem(BESTS_KEY)) || {}
+  } catch {
+    return {}
+  }
+}
+
+function saveBests(bests) {
+  localStorage.setItem(BESTS_KEY, JSON.stringify(bests))
+}
+
+function formatTime(ms) {
+  return (ms / 1000).toFixed(1) + 's'
+}
 
 const RATINGS = [
   { name: 'HASTY', min: 0 },
@@ -406,6 +423,8 @@ export default function App() {
       inKillcam: false,
       lastKillTime: performance.now(),
       ratingHistory: [],
+      levelRatings: [],
+      levelStartTime: performance.now(),
       equippedWeaponId: 'fists',
       tracers: [],
       dead: false,
@@ -426,6 +445,8 @@ export default function App() {
       s.equippedWeaponId = WEAPONS[levelNum - 1].id
       s.tracers = []
       s.dead = false
+      s.levelRatings = []
+      s.levelStartTime = performance.now()
       setLevel(levelNum)
       setEquipped(s.equippedWeaponId)
       setHud({ kills: 0, total: config.enemyCount, alarmed: false, prompt: false, health: 100 })
@@ -475,6 +496,7 @@ export default function App() {
       const score = Math.min(3, speedBonus + stealthBonus + weapon.bonus)
       const rating = RATINGS.slice().reverse().find((r) => score >= r.min).name
       s.ratingHistory.push(rating)
+      s.levelRatings.push(rating)
 
       setKillcam({ rating, weaponLabel: weapon.killLabel })
       setTimeout(() => {
@@ -485,8 +507,35 @@ export default function App() {
           if (kills >= h.total) {
             const counts = { HASTY: 0, VIOLENT: 0, GRUESOME: 0, SAVAGE: 0 }
             s.ratingHistory.forEach((r) => counts[r]++)
+
+            const elapsedMs = now - s.levelStartTime
+            const bestRatingIdx = Math.max(
+              ...s.levelRatings.map((r) => RATINGS.findIndex((x) => x.name === r))
+            )
+            const runRating = RATINGS[bestRatingIdx].name
+            const bests = loadBests()
+            const prev = bests[s.level] || {}
+            const prevRatingIdx = prev.bestRating
+              ? RATINGS.findIndex((r) => r.name === prev.bestRating)
+              : -1
+            const isNewBestTime = !prev.bestTimeMs || elapsedMs < prev.bestTimeMs
+            const isNewBestRating = bestRatingIdx > prevRatingIdx
+            bests[s.level] = {
+              bestTimeMs: isNewBestTime ? elapsedMs : prev.bestTimeMs,
+              bestRating: isNewBestRating ? runRating : prev.bestRating,
+            }
+            saveBests(bests)
+            const personalBest = {
+              timeMs: elapsedMs,
+              bestTimeMs: bests[s.level].bestTimeMs,
+              isNewBestTime,
+              rating: runRating,
+              bestRating: bests[s.level].bestRating,
+              isNewBestRating,
+            }
+
             if (s.level >= TOTAL_LEVELS) {
-              setSummary({ counts, totalKills: s.ratingHistory.length })
+              setSummary({ counts, totalKills: s.ratingHistory.length, personalBest })
               setPhase('gameComplete')
             } else {
               setSummary({
@@ -494,6 +543,7 @@ export default function App() {
                 clearedLevel: s.level,
                 enteringPart2: s.level === PART_ONE_LEVELS,
                 unlockedWeapon: WEAPONS[s.level],
+                personalBest,
               })
               setPhase('levelComplete')
             }
@@ -726,6 +776,23 @@ export default function App() {
           <div className="end-screen">
             <div>
               <h2>LEVEL {summary.clearedLevel} COMPLETE</h2>
+              {summary.personalBest && (
+                <p className="best-line">
+                  Time: {formatTime(summary.personalBest.timeMs)}
+                  {summary.personalBest.isNewBestTime ? (
+                    <span className="new-best"> NEW BEST</span>
+                  ) : (
+                    <> (Best: {formatTime(summary.personalBest.bestTimeMs)})</>
+                  )}
+                  {' · '}
+                  Best kill: {summary.personalBest.rating}
+                  {summary.personalBest.isNewBestRating ? (
+                    <span className="new-best"> NEW BEST</span>
+                  ) : (
+                    <> (Best: {summary.personalBest.bestRating})</>
+                  )}
+                </p>
+              )}
               {summary.enteringPart2 && <p className="part-banner">PART TWO BEGINS</p>}
               {summary.unlockedWeapon && (
                 <div className="unlock-popup">
@@ -759,6 +826,12 @@ export default function App() {
                 {' '}Violent {summary.counts.VIOLENT} · Gruesome {summary.counts.GRUESOME} ·
                 {' '}Savage {summary.counts.SAVAGE}
               </p>
+              {summary.personalBest && (
+                <p className="best-line">
+                  Level 20 time: {formatTime(summary.personalBest.timeMs)}
+                  {summary.personalBest.isNewBestTime && <span className="new-best"> NEW BEST</span>}
+                </p>
+              )}
               <button className="cta" onClick={() => startLevelRef.current.newGame()}>
                 Play Again
               </button>

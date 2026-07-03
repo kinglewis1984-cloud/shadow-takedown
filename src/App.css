@@ -319,6 +319,19 @@ canvas {
   text-shadow: 0 0 12px rgba(255, 0, 0, 0.6);
 }
 
+.best-line {
+  margin-top: 8px;
+  font-size: 13px;
+  color: #999;
+  letter-spacing: 1px;
+}
+
+.new-best {
+  color: #ffcc00;
+  font-weight: bold;
+  text-shadow: 0 0 8px rgba(255, 204, 0, 0.6);
+}
+
 .cta {
   margin-top: 16px;
   background: transparent;
