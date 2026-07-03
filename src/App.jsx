@@ -691,11 +691,11 @@ export default function App() {
         <span className="health-label">{Math.max(0, Math.round(hud.health))} HP</span>
       </div>
       <div className="weapon-bar">
-        {WEAPONS.map((w, i) => (
+        {(getPart(level) === 1 ? WEAPONS.slice(0, 10) : WEAPONS.slice(10, 20)).map((w) => (
           <WeaponCard
             key={w.id}
             weapon={w}
-            keyLabel={i < 10 ? (i === 9 ? 0 : i + 1) : '•'}
+            keyLabel={getPart(level) === 1 ? (w.unlockLevel === 10 ? 0 : w.unlockLevel) : w.unlockLevel}
             unlocked={w.unlockLevel <= level}
             active={equipped === w.id}
             onClick={() => {
