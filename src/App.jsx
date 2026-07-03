@@ -1,18 +1,21 @@
 import { useEffect, useRef, useState } from 'react'
 import './App.css'
 
-const TOTAL_LEVELS = 10
+const TOTAL_LEVELS = 20
+const PART_ONE_LEVELS = 10
 
 const RATINGS = [
   { name: 'HASTY', min: 0 },
   { name: 'VIOLENT', min: 1 },
   { name: 'GRUESOME', min: 2 },
+  { name: 'SAVAGE', min: 3 },
 ]
 
-// One weapon unlocks per level (hotkeys 1-9, 0 for the 10th). Weapons
-// unlocked later carry a brutality bonus so they can push a kill up to
-// GRUESOME even without a perfectly stealthy, fast approach — a way to
-// offset guards getting harder to sneak past in later levels.
+// One weapon unlocks per level (hotkeys 1-9, 0 for the 10th, cycling for
+// levels 11-20). Weapons unlocked later carry a bigger brutality bonus so
+// they can push a kill rating up without needing a perfectly stealthy,
+// fast approach — Part Two's weapons (11-20) can reach the new SAVAGE tier
+// on their own, the way Part One's late weapons could reach GRUESOME.
 const WEAPONS = [
   { id: 'fists', name: 'Bare Hands', killLabel: 'STRANGLED', unlockLevel: 1, bonus: 0 },
   { id: 'wire', name: 'Wire Garrote', killLabel: 'GARROTED', unlockLevel: 2, bonus: 0 },
@@ -24,9 +27,19 @@ const WEAPONS = [
   { id: 'hatchet', name: 'Hatchet', killLabel: 'CHOPPED', unlockLevel: 8, bonus: 1 },
   { id: 'hacksaw', name: 'Hacksaw', killLabel: 'SAWED', unlockLevel: 9, bonus: 1 },
   { id: 'chainsaw', name: 'Chainsaw', killLabel: 'SHREDDED', unlockLevel: 10, bonus: 1 },
+  { id: 'machete', name: 'Machete', killLabel: 'HACKED', unlockLevel: 11, bonus: 2 },
+  { id: 'fireaxe', name: 'Fire Axe', killLabel: 'CLEAVED', unlockLevel: 12, bonus: 2 },
+  { id: 'nailgun', name: 'Nail Gun', killLabel: 'IMPALED', unlockLevel: 13, bonus: 2 },
+  { id: 'razor', name: 'Straight Razor', killLabel: 'CARVED', unlockLevel: 14, bonus: 2 },
+  { id: 'barbwire', name: 'Barbed Wire', killLabel: 'MANGLED', unlockLevel: 15, bonus: 2 },
+  { id: 'cleaver', name: 'Meat Cleaver', killLabel: 'BUTCHERED', unlockLevel: 16, bonus: 3 },
+  { id: 'sledge', name: 'Sledgehammer', killLabel: 'PULVERIZED', unlockLevel: 17, bonus: 3 },
+  { id: 'beartrap', name: 'Bear Trap', killLabel: 'MAULED', unlockLevel: 18, bonus: 3 },
+  { id: 'circsaw', name: 'Circular Saw', killLabel: 'DISMEMBERED', unlockLevel: 19, bonus: 3 },
+  { id: 'flame', name: 'Flamethrower', killLabel: 'INCINERATED', unlockLevel: 20, bonus: 3 },
 ]
 
-const LEVEL_WALLS = [
+const LEVEL_WALLS_PART1 = [
   { x: 0, y: 0, w: 900, h: 20 },
   { x: 0, y: 580, w: 900, h: 20 },
   { x: 0, y: 0, w: 20, h: 600 },
@@ -37,9 +50,27 @@ const LEVEL_WALLS = [
   { x: 120, y: 400, w: 200, h: 20 },
 ]
 
+// Part Two's map: a symmetric facility with four walled rooms around a
+// central divider, with a single choke-point gap in the middle — a
+// deliberately different layout from Part One's scattered obstacles.
+const LEVEL_WALLS_PART2 = [
+  { x: 0, y: 0, w: 900, h: 20 },
+  { x: 0, y: 580, w: 900, h: 20 },
+  { x: 0, y: 0, w: 20, h: 600 },
+  { x: 880, y: 0, w: 20, h: 600 },
+  { x: 440, y: 0, w: 20, h: 250 },
+  { x: 440, y: 350, w: 20, h: 250 },
+  { x: 150, y: 150, w: 180, h: 20 },
+  { x: 150, y: 430, w: 180, h: 20 },
+  { x: 570, y: 150, w: 180, h: 20 },
+  { x: 570, y: 430, w: 180, h: 20 },
+  { x: 250, y: 280, w: 20, h: 120 },
+  { x: 630, y: 280, w: 20, h: 120 },
+]
+
 // Pool of guard patrol routes spread across the map. Each level uses the
 // first N of these, where N grows with the level number.
-const ENEMY_TEMPLATES = [
+const ENEMY_TEMPLATES_PART1 = [
   { patrol: [{ x: 300, y: 100 }, { x: 300, y: 240 }], baseSpeed: 40 },
   { patrol: [{ x: 650, y: 150 }, { x: 450, y: 150 }], baseSpeed: 35 },
   { patrol: [{ x: 750, y: 480 }, { x: 480, y: 480 }], baseSpeed: 38 },
@@ -52,13 +83,43 @@ const ENEMY_TEMPLATES = [
   { patrol: [{ x: 780, y: 60 }, { x: 780, y: 150 }], baseSpeed: 41 },
 ]
 
-// Hardness scales linearly with level: +1 guard per level (capped by the
-// template pool), and small compounding bumps to speed/vision/alertness.
+// Part Two patrols: two guards per room in the four corners, plus two
+// guards watching the central choke point.
+const ENEMY_TEMPLATES_PART2 = [
+  { patrol: [{ x: 90, y: 60 }, { x: 90, y: 130 }], baseSpeed: 38 },
+  { patrol: [{ x: 380, y: 60 }, { x: 250, y: 60 }], baseSpeed: 34 },
+  { patrol: [{ x: 90, y: 470 }, { x: 90, y: 540 }], baseSpeed: 36 },
+  { patrol: [{ x: 380, y: 540 }, { x: 250, y: 540 }], baseSpeed: 40 },
+  { patrol: [{ x: 810, y: 60 }, { x: 810, y: 130 }], baseSpeed: 37 },
+  { patrol: [{ x: 520, y: 60 }, { x: 650, y: 60 }], baseSpeed: 35 },
+  { patrol: [{ x: 810, y: 470 }, { x: 810, y: 540 }], baseSpeed: 39 },
+  { patrol: [{ x: 520, y: 540 }, { x: 650, y: 540 }], baseSpeed: 33 },
+  { patrol: [{ x: 460, y: 270 }, { x: 460, y: 330 }], baseSpeed: 42 },
+  { patrol: [{ x: 350, y: 300 }, { x: 550, y: 300 }], baseSpeed: 41 },
+]
+
+function getPart(level) {
+  return level <= PART_ONE_LEVELS ? 1 : 2
+}
+
+function getWallsForLevel(level) {
+  return getPart(level) === 1 ? LEVEL_WALLS_PART1 : LEVEL_WALLS_PART2
+}
+
+function getTemplatesForLevel(level) {
+  return getPart(level) === 1 ? ENEMY_TEMPLATES_PART1 : ENEMY_TEMPLATES_PART2
+}
+
+// Hardness scales linearly with level across both parts: +1 guard per
+// level (capped by the template pool), and small compounding bumps to
+// speed/vision/alertness that keep climbing into Part Two.
 function buildLevelConfig(level) {
   const step = level - 1
+  const templates = getTemplatesForLevel(level)
   return {
     level,
-    enemyCount: Math.min(2 + level, ENEMY_TEMPLATES.length),
+    part: getPart(level),
+    enemyCount: Math.min(2 + level, templates.length),
     speedMult: 1 + step * 0.1,
     visionRangeMult: 1 + step * 0.08,
     visionAngleMult: Math.min(1 + step * 0.05, 1.4),
@@ -68,8 +129,8 @@ function buildLevelConfig(level) {
   }
 }
 
-function makeEnemies(config) {
-  return ENEMY_TEMPLATES.slice(0, config.enemyCount).map((t, i) => ({
+function makeEnemies(config, templates) {
+  return templates.slice(0, config.enemyCount).map((t, i) => ({
     id: i + 1,
     x: t.patrol[0].x,
     y: t.patrol[0].y,
@@ -86,19 +147,19 @@ function rectsOverlap(a, b) {
   return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y
 }
 
-function circleHitsWalls(x, y, r) {
+function circleHitsWalls(x, y, r, walls) {
   const box = { x: x - r, y: y - r, w: r * 2, h: r * 2 }
-  return LEVEL_WALLS.some((w) => rectsOverlap(box, w))
+  return walls.some((w) => rectsOverlap(box, w))
 }
 
-function hasLineOfSight(x1, y1, x2, y2) {
+function hasLineOfSight(x1, y1, x2, y2, walls) {
   const dist = Math.hypot(x2 - x1, y2 - y1)
   const steps = Math.ceil(dist / 8)
   for (let i = 1; i < steps; i++) {
     const t = i / steps
     const x = x1 + (x2 - x1) * t
     const y = y1 + (y2 - y1) * t
-    if (LEVEL_WALLS.some((w) => x > w.x && x < w.x + w.w && y > w.y && y < w.y + w.h)) {
+    if (walls.some((w) => x > w.x && x < w.x + w.w && y > w.y && y < w.y + w.h)) {
       return false
     }
   }
@@ -183,6 +244,7 @@ export default function App() {
     stateRef.current = {
       level: 1,
       levelConfig: buildLevelConfig(1),
+      walls: LEVEL_WALLS_PART1,
       player: { x: 80, y: 300, angle: 0, crouched: false, health: 100 },
       enemies: [],
       alarmed: false,
@@ -200,8 +262,9 @@ export default function App() {
       const config = buildLevelConfig(levelNum)
       s.level = levelNum
       s.levelConfig = config
+      s.walls = getWallsForLevel(levelNum)
       s.player = { x: 80, y: 300, angle: 0, crouched: false, health: 100 }
-      s.enemies = makeEnemies(config)
+      s.enemies = makeEnemies(config, getTemplatesForLevel(levelNum))
       s.alarmed = false
       s.alarmTimer = 0
       s.inKillcam = false
@@ -255,7 +318,7 @@ export default function App() {
       const stealthy = !s.alarmed
       const speedBonus = timeSinceLast < 4 ? 1 : 0
       const stealthBonus = stealthy ? 1 : 0
-      const score = Math.min(2, speedBonus + stealthBonus + weapon.bonus)
+      const score = Math.min(3, speedBonus + stealthBonus + weapon.bonus)
       const rating = RATINGS.slice().reverse().find((r) => score >= r.min).name
       s.ratingHistory.push(rating)
 
@@ -266,13 +329,13 @@ export default function App() {
         setHud((h) => {
           const kills = h.kills + 1
           if (kills >= h.total) {
-            const counts = { HASTY: 0, VIOLENT: 0, GRUESOME: 0 }
+            const counts = { HASTY: 0, VIOLENT: 0, GRUESOME: 0, SAVAGE: 0 }
             s.ratingHistory.forEach((r) => counts[r]++)
             if (s.level >= TOTAL_LEVELS) {
               setSummary({ counts, totalKills: s.ratingHistory.length })
               setPhase('gameComplete')
             } else {
-              setSummary({ counts: null, clearedLevel: s.level })
+              setSummary({ counts: null, clearedLevel: s.level, enteringPart2: s.level === PART_ONE_LEVELS })
               setPhase('levelComplete')
             }
           }
@@ -307,8 +370,8 @@ export default function App() {
           p.angle = Math.atan2(dy, dx)
           const nx = p.x + dx * moveSpeed * dt
           const ny = p.y + dy * moveSpeed * dt
-          if (!circleHitsWalls(nx, p.y, 12)) p.x = nx
-          if (!circleHitsWalls(p.x, ny, 12)) p.y = ny
+          if (!circleHitsWalls(nx, p.y, 12, s.walls)) p.x = nx
+          if (!circleHitsWalls(p.x, ny, 12, s.walls)) p.y = ny
         }
 
         let nearestBackstab = null
@@ -338,7 +401,9 @@ export default function App() {
           const visionRange = baseRange * config.visionRangeMult
           const visionAngle = (Math.PI / 4) * config.visionAngleMult
           const canSee =
-            dist < visionRange && angleDiff < visionAngle && hasLineOfSight(en.x, en.y, p.x, p.y)
+            dist < visionRange &&
+            angleDiff < visionAngle &&
+            hasLineOfSight(en.x, en.y, p.x, p.y, s.walls)
 
           if (canSee) {
             s.alarmed = true
@@ -385,8 +450,8 @@ export default function App() {
       ctx.fillStyle = '#0b0b0d'
       ctx.fillRect(0, 0, canvas.width, canvas.height)
 
-      ctx.fillStyle = '#222831'
-      for (const w of LEVEL_WALLS) ctx.fillRect(w.x, w.y, w.w, w.h)
+      ctx.fillStyle = config.part === 2 ? '#2b1f1f' : '#222831'
+      for (const w of s.walls) ctx.fillRect(w.x, w.y, w.w, w.h)
 
       const visRange = 150 * config.visionRangeMult
       const visSpread = (Math.PI / 4) * config.visionAngleMult
@@ -456,7 +521,7 @@ export default function App() {
     <div className="game-root">
       <h1 className="game-title">SHADOW TAKEDOWN</h1>
       <div className="hud">
-        <span>Level {level} / {TOTAL_LEVELS} · Hardness x{level}</span>
+        <span>Part {getPart(level)} · Level {level} / {TOTAL_LEVELS} · Hardness x{level}</span>
         <span>Kills: {hud.kills} / {hud.total}</span>
         <span className={hud.alarmed ? 'alarm on' : 'alarm'}>
           {hud.alarmed ? 'ALERT' : 'UNDETECTED'}
@@ -483,7 +548,7 @@ export default function App() {
                 (equipped === w.id ? ' active' : '')
               }
             >
-              <span className="key">{i === 9 ? 0 : i + 1}</span>
+              <span className="key">{i < 10 ? (i === 9 ? 0 : i + 1) : '•'}</span>
               {unlocked ? w.name : '???'}
             </span>
           )
@@ -510,6 +575,7 @@ export default function App() {
           <div className="end-screen">
             <div>
               <h2>LEVEL {summary.clearedLevel} COMPLETE</h2>
+              {summary.enteringPart2 && <p className="part-banner">PART TWO BEGINS</p>}
               <button className="cta" onClick={() => startLevelRef.current(level + 1)}>
                 Continue to Level {level + 1}
               </button>
@@ -530,10 +596,11 @@ export default function App() {
         {phase === 'gameComplete' && summary && (
           <div className="end-screen">
             <div>
-              <h2>ALL 10 LEVELS CLEARED</h2>
+              <h2>ALL {TOTAL_LEVELS} LEVELS CLEARED</h2>
               <p>
                 Total kills: {summary.totalKills} — Hasty {summary.counts.HASTY} ·
-                {' '}Violent {summary.counts.VIOLENT} · Gruesome {summary.counts.GRUESOME}
+                {' '}Violent {summary.counts.VIOLENT} · Gruesome {summary.counts.GRUESOME} ·
+                {' '}Savage {summary.counts.SAVAGE}
               </p>
               <button className="cta" onClick={() => startLevelRef.current.newGame()}>
                 Play Again
@@ -573,8 +640,8 @@ export default function App() {
       ) : (
         <p className="hint">
           WASD/Arrows move · Shift crouch · Approach an enemy from behind, undetected · E to execute
-          · number keys switch weapon · staying in a guard's red cone gets you shot — break line of
-          sight behind walls
+          · number keys (1-10) or click a weapon to switch · staying in a guard's red cone gets you
+          shot — break line of sight behind walls
         </p>
       )}
     </div>

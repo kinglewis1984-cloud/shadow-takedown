@@ -263,6 +263,14 @@ canvas {
   text-align: center;
 }
 
+.part-banner {
+  margin-top: 10px;
+  color: #ff4d4d;
+  font-size: 20px;
+  letter-spacing: 6px;
+  text-shadow: 0 0 12px rgba(255, 0, 0, 0.6);
+}
+
 .cta {
   margin-top: 16px;
   background: transparent;
