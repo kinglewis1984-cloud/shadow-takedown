@@ -1,16 +1,23 @@
-# React + Vite
+# Shadow Takedown
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+A browser-based top-down stealth game inspired by Manhunt's cinematic execution kill-cam. Sneak up on guards undetected, take them down with an escalating arsenal of weapons, and rack up kill ratings from HASTY to SAVAGE.
 
-Currently, two official plugins are available:
+**Play it live:** https://shadow-takedown.vercel.app
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Features
 
-## React Compiler
+- 20 levels across two parts, each with its own map layout and guard patrol pool
+- Difficulty scales with every level: guards get faster, see further, and shoot harder
+- 20 unlockable weapons, each with a unique cinematic kill-cam
+- Guards shoot back when alarmed — walls provide real cover via line-of-sight checks
+- Touch controls for mobile play (virtual joystick + crouch/execute buttons)
+- Personal best time and rating tracked per level, saved locally in your browser
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Development
 
-## Expanding the Oxlint configuration
+```
+npm install
+npm run dev
+```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+Built with React + Vite, rendered on an HTML canvas.
