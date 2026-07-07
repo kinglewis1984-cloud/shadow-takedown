@@ -375,15 +375,22 @@ function Joystick({ moveRef }) {
   }
 
   return (
-    <div
-      className="joystick-base"
-      ref={baseRef}
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={onPointerUp}
-      onPointerCancel={onPointerUp}
-    >
-      <div className="joystick-knob" ref={knobRef} />
+    <div className="joystick-wrap">
+      <div
+        className="joystick-base"
+        ref={baseRef}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
+      >
+        <span className="joystick-arrow up">▲</span>
+        <span className="joystick-arrow down">▼</span>
+        <span className="joystick-arrow left">◀</span>
+        <span className="joystick-arrow right">▶</span>
+        <div className="joystick-knob" ref={knobRef} />
+      </div>
+      <span className="joystick-label">MOVE</span>
     </div>
   )
 }
@@ -855,7 +862,7 @@ export default function App() {
                 className={'touch-btn execute' + (hud.prompt ? ' ready' : '')}
                 onPointerDown={() => { touchExecuteRef.current = true }}
               >
-                KILL
+                EAT
               </button>
             </div>
           </div>
@@ -864,7 +871,7 @@ export default function App() {
       {isTouch ? (
         <p className="hint">
           Left stick to move · CROUCH to sneak · tap a weapon to equip · get behind a guard,
-          undetected, and tap KILL · staying in a guard's red cone gets you shot — break line of
+          undetected, and tap EAT · staying in a guard's red cone gets you shot — break line of
           sight behind walls
         </p>
       ) : (
