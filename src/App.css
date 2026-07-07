@@ -363,7 +363,7 @@ canvas {
   inset: 0;
   justify-content: space-between;
   align-items: flex-end;
-  padding: 16px;
+  padding: 8px;
   pointer-events: none;
 }
 
@@ -371,17 +371,17 @@ canvas {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
   pointer-events: none;
 }
 
 .joystick-base {
-  width: 120px;
-  height: 120px;
+  width: 84px;
+  height: 84px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.18);
-  border: 3px solid rgba(255, 255, 255, 0.75);
-  box-shadow: 0 0 16px rgba(0, 0, 0, 0.6), inset 0 0 20px rgba(0, 0, 0, 0.3);
+  background: rgba(255, 255, 255, 0.15);
+  border: 2px solid rgba(255, 255, 255, 0.7);
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.6), inset 0 0 14px rgba(0, 0, 0, 0.3);
   touch-action: none;
   pointer-events: auto;
   position: relative;
@@ -391,20 +391,20 @@ canvas {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 50px;
-  height: 50px;
-  margin: -25px;
+  width: 34px;
+  height: 34px;
+  margin: -17px;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.85);
   border: 2px solid #c0392b;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.5);
   pointer-events: none;
 }
 
 .joystick-arrow {
   position: absolute;
   color: rgba(255, 255, 255, 0.6);
-  font-size: 14px;
+  font-size: 10px;
   pointer-events: none;
 }
 
@@ -434,28 +434,28 @@ canvas {
 
 .joystick-label {
   color: rgba(255, 255, 255, 0.85);
-  font-size: 13px;
-  letter-spacing: 3px;
+  font-size: 10px;
+  letter-spacing: 2px;
   text-shadow: 0 0 6px rgba(0, 0, 0, 0.8);
 }
 
 .touch-buttons {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
   align-items: center;
 }
 
 .touch-btn {
   pointer-events: auto;
-  width: 76px;
-  height: 76px;
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
   border: 1px solid #555;
-  background: rgba(20, 20, 20, 0.7);
+  background: rgba(20, 20, 20, 0.65);
   color: #ccc;
   font-family: inherit;
-  font-size: 11px;
+  font-size: 9px;
   letter-spacing: 1px;
   touch-action: none;
 }
