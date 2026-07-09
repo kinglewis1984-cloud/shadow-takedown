@@ -261,6 +261,58 @@ canvas {
   }
 }
 
+.mouth {
+  position: absolute;
+  top: 28%;
+  left: 50%;
+  width: 110px;
+  height: 40px;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+}
+
+.mouth .jaw {
+  width: 100px;
+  height: 14px;
+  background: #f0f0f0;
+  border: 2px solid #c0392b;
+  border-radius: 6px;
+}
+
+.mouth .jaw.upper {
+  transform-origin: center bottom;
+  animation: chompUpper 0.4s ease-in-out infinite;
+}
+
+.mouth .jaw.lower {
+  transform-origin: center top;
+  animation: chompLower 0.4s ease-in-out infinite;
+}
+
+@keyframes chompUpper {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-16px);
+  }
+}
+
+@keyframes chompLower {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(16px);
+  }
+}
+
 .killcam-text {
   position: absolute;
   top: 50%;

@@ -709,7 +709,7 @@ export default function App() {
       }
 
       const p = s.player
-      ctx.fillStyle = p.crouched ? '#4f6d7a' : '#e0e0e0'
+      ctx.fillStyle = p.crouched ? '#c9760f' : '#f7931a'
       ctx.beginPath()
       ctx.arc(p.x, p.y, p.crouched ? 8 : 10, 0, Math.PI * 2)
       ctx.fill()
@@ -773,6 +773,10 @@ export default function App() {
             <div className="bar top" />
             <div className="bar bottom" />
             <div className="flash" />
+            <div className="mouth">
+              <div className="jaw upper" />
+              <div className="jaw lower" />
+            </div>
             <div className="killcam-text">
               {killcam.weaponLabel}
               <span className="killcam-rating">{killcam.rating}</span>
