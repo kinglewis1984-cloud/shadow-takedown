@@ -5,6 +5,15 @@ const TOTAL_LEVELS = 20
 const PART_ONE_LEVELS = 10
 const BESTS_KEY = 'shadowTakedownBests'
 
+// Keys the game listens for — blocked from their default browser behavior
+// (arrow keys/space scrolling the page) so movement doesn't scroll the site.
+const GAME_KEYS = new Set([
+  'w', 'a', 's', 'd',
+  'arrowup', 'arrowdown', 'arrowleft', 'arrowright',
+  'shift', 'e', ' ',
+  '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
+])
+
 function loadBests() {
   try {
     return JSON.parse(localStorage.getItem(BESTS_KEY)) || {}
@@ -470,7 +479,9 @@ export default function App() {
     startLevelRef.current.newGame = startNewGame
 
     const onKeyDown = (e) => {
-      keysRef.current[e.key.toLowerCase()] = true
+      const key = e.key.toLowerCase()
+      if (GAME_KEYS.has(key)) e.preventDefault()
+      keysRef.current[key] = true
       const s = stateRef.current
       const slot = e.key === '0' ? 9 : Number(e.key) - 1
       if (Number.isInteger(slot) && slot >= 0 && slot < s.level && WEAPONS[slot]) {
