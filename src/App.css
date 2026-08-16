@@ -564,6 +564,22 @@ canvas {
   width: 100%;
 }
 
+.lock-control {
+  margin-top: 14px;
+}
+
+.lock-form {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+}
+
+.lock-status {
+  color: #ffcc00;
+  font-size: 12px;
+  letter-spacing: 1px;
+}
+
 .username-input {
   flex: 1;
   background: rgba(20, 20, 20, 0.7);

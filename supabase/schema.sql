@@ -17,6 +17,8 @@ create table if not exists runs (
   created_at timestamptz not null default now()
 );
 
+alter table players add column if not exists user_id uuid references auth.users(id);
+
 alter table players enable row level security;
 alter table runs enable row level security;
 
@@ -25,6 +27,17 @@ create policy "players_public_select" on players for select using (true);
 
 drop policy if exists "players_public_insert" on players;
 create policy "players_public_insert" on players for insert with check (true);
+
+-- Lets a signed-in user claim an unclaimed name, or re-affirm a name they
+-- already claimed. auth.uid() is null for the anon key, so this policy is a
+-- no-op for anonymous requests (the with-check can only be satisfied by
+-- setting user_id back to null, never to a real id) — only a genuinely
+-- authenticated client can lock a name to their account.
+drop policy if exists "players_claim_own" on players;
+create policy "players_claim_own" on players
+  for update
+  using (auth.uid() is not null and (user_id is null or user_id = auth.uid()))
+  with check (user_id = auth.uid());
 
 drop policy if exists "runs_public_select" on runs;
 create policy "runs_public_select" on runs for select using (true);

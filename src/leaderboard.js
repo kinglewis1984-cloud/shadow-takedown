@@ -18,7 +18,7 @@ export async function registerUsername(rawName) {
     const { data, error } = await supabase
       .from('players')
       .insert({ display_name: candidate, base_name: base })
-      .select('id, display_name')
+      .select('id, display_name, user_id')
       .single()
 
     if (!error) return data
@@ -26,6 +26,30 @@ export async function registerUsername(rawName) {
   }
 
   throw new Error('That name is too popular — try something else.')
+}
+
+// Locks a name to the signed-in user's account so they can reclaim it from
+// any device by signing in again. RLS only allows this for a genuinely
+// authenticated client (see players_claim_own in schema.sql).
+export async function claimUsername(playerId, userId) {
+  const { data, error } = await supabase
+    .from('players')
+    .update({ user_id: userId })
+    .eq('id', playerId)
+    .select('id, display_name, user_id')
+    .single()
+  if (error) throw error
+  return data
+}
+
+export async function findPlayerByUserId(userId) {
+  const { data, error } = await supabase
+    .from('players')
+    .select('id, display_name, user_id')
+    .eq('user_id', userId)
+    .maybeSingle()
+  if (error) throw error
+  return data
 }
 
 export async function submitRun({ playerId, displayName, timeMs, totalKills, savageKills }) {

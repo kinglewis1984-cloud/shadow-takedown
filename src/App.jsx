@@ -1,6 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import './App.css'
-import { registerUsername, submitRun, fetchTopLeaderboard, fetchFullLeaderboard } from './leaderboard'
+import {
+  registerUsername,
+  submitRun,
+  fetchTopLeaderboard,
+  fetchFullLeaderboard,
+  claimUsername,
+  findPlayerByUserId,
+} from './leaderboard'
+import { sendSignInLink, getSession, onAuthStateChange } from './auth'
 
 const TOTAL_LEVELS = 20
 const PART_ONE_LEVELS = 10
@@ -482,12 +490,18 @@ export default function App() {
   const [showFullLeaderboard, setShowFullLeaderboard] = useState(false)
   const [livesDisplay, setLivesDisplay] = useState(STARTING_LIVES)
   const [gameOverLevel, setGameOverLevel] = useState(null)
+  const [showLockForm, setShowLockForm] = useState(false)
+  const [lockEmail, setLockEmail] = useState('')
+  const [lockStatus, setLockStatus] = useState('idle')
+  const [lockError, setLockError] = useState('')
   const phaseRef = useRef(phase)
   phaseRef.current = phase
   const playerRef = useRef(player)
   playerRef.current = player
   const showLeaderboardRef = useRef(showFullLeaderboard)
   showLeaderboardRef.current = showFullLeaderboard
+  const showLockRef = useRef(showLockForm)
+  showLockRef.current = showLockForm
 
   useEffect(() => {
     setIsTouch('ontouchstart' in window || navigator.maxTouchPoints > 0)
@@ -495,6 +509,44 @@ export default function App() {
 
   useEffect(() => {
     fetchTopLeaderboard().then(setTopLeaderboard).catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function syncFromSession(session) {
+      if (!session || cancelled) return
+      try {
+        const claimed = await findPlayerByUserId(session.user.id)
+        if (cancelled) return
+        if (claimed) {
+          const hadNoPlayer = !playerRef.current
+          savePlayer(claimed)
+          setPlayer(claimed)
+          if (hadNoPlayer && phaseRef.current === 'menu') {
+            setPhase('playing')
+            startLevelRef.current(startingLevelRef.current)
+          }
+        } else {
+          const current = playerRef.current
+          if (current && !current.user_id) {
+            const updated = await claimUsername(current.id, session.user.id)
+            if (cancelled) return
+            savePlayer(updated)
+            setPlayer(updated)
+          }
+        }
+      } catch (err) {
+        console.error('Auth sync failed', err)
+      }
+    }
+
+    getSession().then(syncFromSession)
+    const unsubscribe = onAuthStateChange(syncFromSession)
+    return () => {
+      cancelled = true
+      unsubscribe()
+    }
   }, [])
 
   useEffect(() => {
@@ -675,7 +727,7 @@ export default function App() {
       const keys = keysRef.current
       const config = s.levelConfig
 
-      if (!s.inKillcam && !showLeaderboardRef.current && phaseRef.current === 'playing') {
+      if (!s.inKillcam && !showLeaderboardRef.current && !showLockRef.current && phaseRef.current === 'playing') {
         const p = s.player
         p.crouched = !!keys['shift'] || touchCrouchRef.current
         const moveSpeed = p.crouched ? 60 : 130
@@ -856,6 +908,48 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  const lockControl = (
+    <div className="lock-control">
+      {showLockForm ? (
+        <form
+          className="lock-form"
+          onSubmit={async (e) => {
+            e.preventDefault()
+            if (lockStatus === 'sending') return
+            setLockStatus('sending')
+            setLockError('')
+            try {
+              const { error } = await sendSignInLink(lockEmail.trim())
+              if (error) throw error
+              setLockStatus('sent')
+            } catch (err) {
+              setLockStatus('error')
+              setLockError(err.message || 'Could not send the link — try again.')
+            }
+          }}
+        >
+          <input
+            type="email"
+            className="username-input"
+            value={lockEmail}
+            onChange={(e) => setLockEmail(e.target.value)}
+            placeholder="you@example.com"
+            required
+          />
+          <button className="cta" type="submit" disabled={lockStatus === 'sending'}>
+            {lockStatus === 'sending' ? 'Sending…' : 'Send link'}
+          </button>
+        </form>
+      ) : (
+        <button type="button" className="link-btn" onClick={() => setShowLockForm(true)}>
+          {player ? '🔒 Lock this username to your email' : 'Already locked a name? Sign in with email'}
+        </button>
+      )}
+      {lockStatus === 'sent' && <p className="hint">Check your email for a sign-in link.</p>}
+      {lockStatus === 'error' && <p className="username-error">{lockError}</p>}
+    </div>
+  )
+
   return (
     <div className="game-root">
       <h1 className="game-title">SHADOW TAKEDOWN</h1>
@@ -869,6 +963,12 @@ export default function App() {
         <button type="button" className="hud-leaderboard-btn" onClick={() => setShowFullLeaderboard(true)}>
           Leaderboard
         </button>
+        {player && !player.user_id && (
+          <button type="button" className="hud-leaderboard-btn" onClick={() => setShowLockForm(true)}>
+            🔒 Lock Username
+          </button>
+        )}
+        {player && player.user_id && <span className="lock-status">🔒 Locked</span>}
       </div>
       <div className="health-bar">
         <div className="health-fill" style={{ width: `${Math.max(0, hud.health)}%` }} />
@@ -914,6 +1014,11 @@ export default function App() {
                   >
                     Play Again
                   </button>
+                  {player.user_id ? (
+                    <p className="lock-status">🔒 Locked to your email</p>
+                  ) : (
+                    lockControl
+                  )}
                 </>
               ) : (
                 <>
@@ -956,6 +1061,7 @@ export default function App() {
                     </button>
                   </form>
                   {usernameError && <p className="username-error">{usernameError}</p>}
+                  {lockControl}
                 </>
               )}
 
@@ -1100,6 +1206,17 @@ export default function App() {
       )}
       {showFullLeaderboard && (
         <LeaderboardModal onClose={() => setShowFullLeaderboard(false)} />
+      )}
+      {showLockForm && phase === 'playing' && (
+        <div className="leaderboard-overlay" onClick={() => setShowLockForm(false)}>
+          <div className="leaderboard-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="leaderboard-modal-header">
+              <h2>Lock Username</h2>
+              <button className="close-btn" onClick={() => setShowLockForm(false)}>×</button>
+            </div>
+            {lockControl}
+          </div>
+        </div>
       )}
     </div>
   )
