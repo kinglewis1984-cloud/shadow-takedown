@@ -558,7 +558,7 @@ export default function App() {
       if (GAME_KEYS.has(key)) e.preventDefault()
       keysRef.current[key] = true
       const s = stateRef.current
-      const slot = e.key === '0' ? 9 : Number(e.key) - 1
+      const slot = Number(e.key)
       if (Number.isInteger(slot) && slot >= 0 && slot < s.level && WEAPONS[slot]) {
         s.equippedWeaponId = WEAPONS[slot].id
         setEquipped(s.equippedWeaponId)
@@ -874,7 +874,7 @@ export default function App() {
           <WeaponCard
             key={w.id}
             weapon={w}
-            keyLabel={getPart(level) === 1 ? (w.unlockLevel === 10 ? 0 : w.unlockLevel) : w.unlockLevel}
+            keyLabel={getPart(level) === 1 ? w.unlockLevel - 1 : w.unlockLevel}
             unlocked={w.unlockLevel <= level}
             active={equipped === w.id}
             onClick={() => {
@@ -1093,7 +1093,7 @@ export default function App() {
       ) : (
         <p className="hint">
           WASD/Arrows move · Shift crouch · Approach an enemy from behind, undetected · E to execute
-          · number keys (1-10) or click a weapon to switch · staying in a guard's red cone gets you
+          · number keys (0-9) or click a weapon to switch · staying in a guard's red cone gets you
           shot — break line of sight behind walls
         </p>
       )}
