@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import './App.css'
+import { registerUsername, submitRun, fetchTopLeaderboard, fetchFullLeaderboard } from './leaderboard'
 
 const TOTAL_LEVELS = 20
 const PART_ONE_LEVELS = 10
 const BESTS_KEY = 'shadowTakedownBests'
+const PLAYER_KEY = 'shadowTakedownPlayer'
+const USERNAME_PATTERN = /^[a-zA-Z0-9 _-]{2,16}$/
 
 // Keys the game listens for — blocked from their default browser behavior
 // (arrow keys/space scrolling the page) so movement doesn't scroll the site.
@@ -24,6 +27,18 @@ function loadBests() {
 
 function saveBests(bests) {
   localStorage.setItem(BESTS_KEY, JSON.stringify(bests))
+}
+
+function loadPlayer() {
+  try {
+    return JSON.parse(localStorage.getItem(PLAYER_KEY)) || null
+  } catch {
+    return null
+  }
+}
+
+function savePlayer(player) {
+  localStorage.setItem(PLAYER_KEY, JSON.stringify(player))
 }
 
 function formatTime(ms) {
@@ -404,6 +419,43 @@ function Joystick({ moveRef }) {
   )
 }
 
+function LeaderboardModal({ onClose }) {
+  const [rows, setRows] = useState(null)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    fetchFullLeaderboard()
+      .then(setRows)
+      .catch(() => setError('Could not load the leaderboard.'))
+  }, [])
+
+  return (
+    <div className="leaderboard-overlay" onClick={onClose}>
+      <div className="leaderboard-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="leaderboard-modal-header">
+          <h2>Leaderboard</h2>
+          <button className="close-btn" onClick={onClose}>×</button>
+        </div>
+        {error && <p className="username-error">{error}</p>}
+        {!rows && !error && <p className="hint">Loading…</p>}
+        {rows && rows.length === 0 && <p className="hint">No runs yet — be the first.</p>}
+        {rows && rows.length > 0 && (
+          <ol className="leaderboard-full">
+            {rows.map((row, i) => (
+              <li key={row.display_name}>
+                <span className="rank">{i + 1}</span>
+                <span className="name">{row.display_name}</span>
+                <span className="time">{formatTime(row.best_time_ms)}</span>
+                <span className="savage">{row.best_savage_kills} SAVAGE</span>
+              </li>
+            ))}
+          </ol>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export default function App() {
   const canvasRef = useRef(null)
   const keysRef = useRef({})
@@ -412,19 +464,32 @@ export default function App() {
   const touchExecuteRef = useRef(false)
   const stateRef = useRef(null)
   const startLevelRef = useRef(() => {})
+  const startingLevelRef = useRef(1)
   const [hud, setHud] = useState({ kills: 0, total: 3, alarmed: false, prompt: false, health: 100 })
   const [killcam, setKillcam] = useState(null)
-  const [phase, setPhase] = useState('playing')
+  const [player, setPlayer] = useState(() => loadPlayer())
+  const [phase, setPhase] = useState(() => (loadPlayer() ? 'playing' : 'usernameGate'))
   const [level, setLevel] = useState(1)
   const [summary, setSummary] = useState(null)
   const [equipped, setEquipped] = useState('fists')
   const [hitFlash, setHitFlash] = useState(0)
   const [isTouch, setIsTouch] = useState(false)
+  const [usernameInput, setUsernameInput] = useState('')
+  const [usernameError, setUsernameError] = useState('')
+  const [registering, setRegistering] = useState(false)
+  const [topLeaderboard, setTopLeaderboard] = useState([])
+  const [showFullLeaderboard, setShowFullLeaderboard] = useState(false)
   const phaseRef = useRef(phase)
   phaseRef.current = phase
+  const playerRef = useRef(player)
+  playerRef.current = player
 
   useEffect(() => {
     setIsTouch('ontouchstart' in window || navigator.maxTouchPoints > 0)
+  }, [])
+
+  useEffect(() => {
+    fetchTopLeaderboard().then(setTopLeaderboard).catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -441,6 +506,7 @@ export default function App() {
       ratingHistory: [],
       levelRatings: [],
       levelStartTime: performance.now(),
+      gameStartTime: performance.now(),
       equippedWeaponId: 'fists',
       tracers: [],
       dead: false,
@@ -463,6 +529,7 @@ export default function App() {
       s.dead = false
       s.levelRatings = []
       s.levelStartTime = performance.now()
+      if (levelNum === 1) s.gameStartTime = performance.now()
       setLevel(levelNum)
       setEquipped(s.equippedWeaponId)
       setHud({ kills: 0, total: config.enemyCount, alarmed: false, prompt: false, health: 100 })
@@ -555,6 +622,19 @@ export default function App() {
             if (s.level >= TOTAL_LEVELS) {
               setSummary({ counts, totalKills: s.ratingHistory.length, personalBest })
               setPhase('gameComplete')
+              const p = playerRef.current
+              if (p) {
+                submitRun({
+                  playerId: p.id,
+                  displayName: p.display_name,
+                  timeMs: now - s.gameStartTime,
+                  totalKills: s.ratingHistory.length,
+                  savageKills: counts.SAVAGE,
+                })
+                  .then(() => fetchTopLeaderboard())
+                  .then(setTopLeaderboard)
+                  .catch((err) => console.error('Leaderboard submit failed', err))
+              }
             } else {
               setSummary({
                 counts: null,
@@ -733,7 +813,15 @@ export default function App() {
       raf = requestAnimationFrame(loop)
     }
 
-    startLevel(1)
+    const requestedLevel = Number(new URLSearchParams(window.location.search).get('level'))
+    const startingLevel =
+      Number.isInteger(requestedLevel) && requestedLevel >= 1 && requestedLevel <= TOTAL_LEVELS
+        ? requestedLevel
+        : 1
+    startingLevelRef.current = startingLevel
+    if (playerRef.current) {
+      startLevel(startingLevel)
+    }
     raf = requestAnimationFrame(loop)
 
     return () => {
@@ -778,6 +866,73 @@ export default function App() {
         {hitFlash > 0 && <div key={hitFlash} className="hit-flash" />}
         {hud.prompt && !killcam && phase === 'playing' && (
           <div className="prompt">Press E to execute — {WEAPONS.find((w) => w.id === equipped)?.name}</div>
+        )}
+        {phase === 'usernameGate' && (
+          <div className="end-screen">
+            <div className="menu-screen">
+              <p className="menu-tagline">Enter a name to start — it'll show up on the leaderboard.</p>
+              <form
+                className="username-form"
+                onSubmit={async (e) => {
+                  e.preventDefault()
+                  if (registering) return
+                  const trimmed = usernameInput.trim()
+                  if (!USERNAME_PATTERN.test(trimmed)) {
+                    setUsernameError('2-16 letters, numbers, spaces, - or _.')
+                    return
+                  }
+                  setUsernameError('')
+                  setRegistering(true)
+                  try {
+                    const registered = await registerUsername(trimmed)
+                    savePlayer(registered)
+                    setPlayer(registered)
+                    setRegistering(false)
+                    setPhase('playing')
+                    startLevelRef.current(startingLevelRef.current)
+                  } catch (err) {
+                    setRegistering(false)
+                    setUsernameError(err.message || 'Could not register that name — try again.')
+                  }
+                }}
+              >
+                <input
+                  className="username-input"
+                  value={usernameInput}
+                  onChange={(e) => setUsernameInput(e.target.value)}
+                  placeholder="Your name"
+                  maxLength={16}
+                  autoFocus
+                />
+                <button className="cta" type="submit" disabled={registering || !usernameInput.trim()}>
+                  {registering ? 'Checking…' : 'Start'}
+                </button>
+              </form>
+              {usernameError && <p className="username-error">{usernameError}</p>}
+
+              {topLeaderboard.length > 0 && (
+                <div className="leaderboard-preview">
+                  <h3>Top Runs</h3>
+                  <ol>
+                    {topLeaderboard.map((row, i) => (
+                      <li key={row.display_name}>
+                        <span className="rank">{i + 1}</span>
+                        <span className="name">{row.display_name}</span>
+                        <span className="time">{formatTime(row.best_time_ms)}</span>
+                      </li>
+                    ))}
+                  </ol>
+                  <button type="button" className="link-btn" onClick={() => setShowFullLeaderboard(true)}>
+                    View full leaderboard
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {showFullLeaderboard && (
+              <LeaderboardModal onClose={() => setShowFullLeaderboard(false)} />
+            )}
+          </div>
         )}
         {killcam && (
           <div className="killcam">
