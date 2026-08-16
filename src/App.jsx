@@ -4,6 +4,7 @@ import { registerUsername, submitRun, fetchTopLeaderboard, fetchFullLeaderboard 
 
 const TOTAL_LEVELS = 20
 const PART_ONE_LEVELS = 10
+const STARTING_LIVES = 3
 const BESTS_KEY = 'shadowTakedownBests'
 const PLAYER_KEY = 'shadowTakedownPlayer'
 const USERNAME_PATTERN = /^[a-zA-Z0-9 _-]{2,16}$/
@@ -468,7 +469,7 @@ export default function App() {
   const [hud, setHud] = useState({ kills: 0, total: 3, alarmed: false, prompt: false, health: 100 })
   const [killcam, setKillcam] = useState(null)
   const [player, setPlayer] = useState(() => loadPlayer())
-  const [phase, setPhase] = useState(() => (loadPlayer() ? 'playing' : 'usernameGate'))
+  const [phase, setPhase] = useState(() => (loadPlayer() ? 'playing' : 'menu'))
   const [level, setLevel] = useState(1)
   const [summary, setSummary] = useState(null)
   const [equipped, setEquipped] = useState('fists')
@@ -479,6 +480,8 @@ export default function App() {
   const [registering, setRegistering] = useState(false)
   const [topLeaderboard, setTopLeaderboard] = useState([])
   const [showFullLeaderboard, setShowFullLeaderboard] = useState(false)
+  const [livesDisplay, setLivesDisplay] = useState(STARTING_LIVES)
+  const [gameOverLevel, setGameOverLevel] = useState(null)
   const phaseRef = useRef(phase)
   phaseRef.current = phase
   const playerRef = useRef(player)
@@ -510,6 +513,7 @@ export default function App() {
       equippedWeaponId: 'fists',
       tracers: [],
       dead: false,
+      lives: STARTING_LIVES,
     }
 
     function startLevel(levelNum) {
@@ -529,8 +533,12 @@ export default function App() {
       s.dead = false
       s.levelRatings = []
       s.levelStartTime = performance.now()
-      if (levelNum === 1) s.gameStartTime = performance.now()
+      if (levelNum === 1) {
+        s.gameStartTime = performance.now()
+        s.lives = STARTING_LIVES
+      }
       setLevel(levelNum)
+      setLivesDisplay(s.lives)
       setEquipped(s.equippedWeaponId)
       setHud({ kills: 0, total: config.enemyCount, alarmed: false, prompt: false, health: 100 })
       setKillcam(null)
@@ -619,8 +627,14 @@ export default function App() {
               isNewBestRating,
             }
 
+            const bonusLife = s.level % 5 === 0
+            if (bonusLife) {
+              s.lives += 1
+              setLivesDisplay(s.lives)
+            }
+
             if (s.level >= TOTAL_LEVELS) {
-              setSummary({ counts, totalKills: s.ratingHistory.length, personalBest })
+              setSummary({ counts, totalKills: s.ratingHistory.length, personalBest, bonusLife })
               setPhase('gameComplete')
               const p = playerRef.current
               if (p) {
@@ -642,6 +656,7 @@ export default function App() {
                 enteringPart2: s.level === PART_ONE_LEVELS,
                 unlockedWeapon: WEAPONS[s.level],
                 personalBest,
+                bonusLife,
               })
               setPhase('levelComplete')
             }
@@ -725,7 +740,14 @@ export default function App() {
               if (p.health <= 0 && !s.dead) {
                 s.dead = true
                 s.inKillcam = true
-                setPhase('gameOver')
+                s.lives = Math.max(0, s.lives - 1)
+                setLivesDisplay(s.lives)
+                if (s.lives > 0) {
+                  setPhase('gameOver')
+                } else {
+                  setGameOverLevel(s.level)
+                  setPhase('menu')
+                }
               }
             }
           } else {
@@ -837,6 +859,7 @@ export default function App() {
       <h1 className="game-title">SHADOW TAKEDOWN</h1>
       <div className="hud">
         <span>Part {getPart(level)} · Level {level} / {TOTAL_LEVELS} · Hardness x{level}</span>
+        <span>Lives: {livesDisplay}</span>
         <span>Kills: {hud.kills} / {hud.total}</span>
         <span className={hud.alarmed ? 'alarm on' : 'alarm'}>
           {hud.alarmed ? 'ALERT' : 'UNDETECTED'}
@@ -867,48 +890,69 @@ export default function App() {
         {hud.prompt && !killcam && phase === 'playing' && (
           <div className="prompt">Press E to execute — {WEAPONS.find((w) => w.id === equipped)?.name}</div>
         )}
-        {phase === 'usernameGate' && (
+        {phase === 'menu' && (
           <div className="end-screen">
             <div className="menu-screen">
-              <p className="menu-tagline">Enter a name to start — it'll show up on the leaderboard.</p>
-              <form
-                className="username-form"
-                onSubmit={async (e) => {
-                  e.preventDefault()
-                  if (registering) return
-                  const trimmed = usernameInput.trim()
-                  if (!USERNAME_PATTERN.test(trimmed)) {
-                    setUsernameError('2-16 letters, numbers, spaces, - or _.')
-                    return
-                  }
-                  setUsernameError('')
-                  setRegistering(true)
-                  try {
-                    const registered = await registerUsername(trimmed)
-                    savePlayer(registered)
-                    setPlayer(registered)
-                    setRegistering(false)
-                    setPhase('playing')
-                    startLevelRef.current(startingLevelRef.current)
-                  } catch (err) {
-                    setRegistering(false)
-                    setUsernameError(err.message || 'Could not register that name — try again.')
-                  }
-                }}
-              >
-                <input
-                  className="username-input"
-                  value={usernameInput}
-                  onChange={(e) => setUsernameInput(e.target.value)}
-                  placeholder="Your name"
-                  maxLength={16}
-                  autoFocus
-                />
-                <button className="cta" type="submit" disabled={registering || !usernameInput.trim()}>
-                  {registering ? 'Checking…' : 'Start'}
-                </button>
-              </form>
-              {usernameError && <p className="username-error">{usernameError}</p>}
+              {player ? (
+                <>
+                  <p className="menu-tagline">
+                    {gameOverLevel
+                      ? <>Out of lives on Level {gameOverLevel} — nice try, {player.display_name}.</>
+                      : <>Welcome back, {player.display_name}.</>}
+                  </p>
+                  <button
+                    className="cta"
+                    onClick={() => {
+                      setGameOverLevel(null)
+                      startLevelRef.current.newGame()
+                    }}
+                  >
+                    Play Again
+                  </button>
+                </>
+              ) : (
+                <>
+                  <p className="menu-tagline">Enter a name to start — it'll show up on the leaderboard.</p>
+                  <form
+                    className="username-form"
+                    onSubmit={async (e) => {
+                      e.preventDefault()
+                      if (registering) return
+                      const trimmed = usernameInput.trim()
+                      if (!USERNAME_PATTERN.test(trimmed)) {
+                        setUsernameError('2-16 letters, numbers, spaces, - or _.')
+                        return
+                      }
+                      setUsernameError('')
+                      setRegistering(true)
+                      try {
+                        const registered = await registerUsername(trimmed)
+                        savePlayer(registered)
+                        setPlayer(registered)
+                        setRegistering(false)
+                        setPhase('playing')
+                        startLevelRef.current(startingLevelRef.current)
+                      } catch (err) {
+                        setRegistering(false)
+                        setUsernameError(err.message || 'Could not register that name — try again.')
+                      }
+                    }}
+                  >
+                    <input
+                      className="username-input"
+                      value={usernameInput}
+                      onChange={(e) => setUsernameInput(e.target.value)}
+                      placeholder="Your name"
+                      maxLength={16}
+                      autoFocus
+                    />
+                    <button className="cta" type="submit" disabled={registering || !usernameInput.trim()}>
+                      {registering ? 'Checking…' : 'Start'}
+                    </button>
+                  </form>
+                  {usernameError && <p className="username-error">{usernameError}</p>}
+                </>
+              )}
 
               {topLeaderboard.length > 0 && (
                 <div className="leaderboard-preview">
@@ -970,6 +1014,7 @@ export default function App() {
                   )}
                 </p>
               )}
+              {summary.bonusLife && <p className="new-best">+1 EXTRA LIFE</p>}
               {summary.enteringPart2 && <p className="part-banner">PART TWO BEGINS</p>}
               {summary.unlockedWeapon && (
                 <div className="unlock-popup">
@@ -988,6 +1033,7 @@ export default function App() {
             <div>
               <h2>YOU DIED</h2>
               <p>Gunned down on Level {level}</p>
+              <p className="best-line">Lives left: {livesDisplay}</p>
               <button className="cta" onClick={() => startLevelRef.current(level)}>
                 Retry Level {level}
               </button>
