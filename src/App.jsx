@@ -486,6 +486,8 @@ export default function App() {
   phaseRef.current = phase
   const playerRef = useRef(player)
   playerRef.current = player
+  const showLeaderboardRef = useRef(showFullLeaderboard)
+  showLeaderboardRef.current = showFullLeaderboard
 
   useEffect(() => {
     setIsTouch('ontouchstart' in window || navigator.maxTouchPoints > 0)
@@ -673,7 +675,7 @@ export default function App() {
       const keys = keysRef.current
       const config = s.levelConfig
 
-      if (!s.inKillcam && phaseRef.current === 'playing') {
+      if (!s.inKillcam && !showLeaderboardRef.current && phaseRef.current === 'playing') {
         const p = s.player
         p.crouched = !!keys['shift'] || touchCrouchRef.current
         const moveSpeed = p.crouched ? 60 : 130
@@ -864,6 +866,9 @@ export default function App() {
         <span className={hud.alarmed ? 'alarm on' : 'alarm'}>
           {hud.alarmed ? 'ALERT' : 'UNDETECTED'}
         </span>
+        <button type="button" className="hud-leaderboard-btn" onClick={() => setShowFullLeaderboard(true)}>
+          Leaderboard
+        </button>
       </div>
       <div className="health-bar">
         <div className="health-fill" style={{ width: `${Math.max(0, hud.health)}%` }} />
@@ -972,10 +977,6 @@ export default function App() {
                 </div>
               )}
             </div>
-
-            {showFullLeaderboard && (
-              <LeaderboardModal onClose={() => setShowFullLeaderboard(false)} />
-            )}
           </div>
         )}
         {killcam && (
@@ -1096,6 +1097,9 @@ export default function App() {
           · number keys (0-9) or click a weapon to switch · staying in a guard's red cone gets you
           shot — break line of sight behind walls
         </p>
+      )}
+      {showFullLeaderboard && (
+        <LeaderboardModal onClose={() => setShowFullLeaderboard(false)} />
       )}
     </div>
   )

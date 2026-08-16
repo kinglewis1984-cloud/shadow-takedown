@@ -31,9 +31,27 @@ body {
 
 .hud {
   display: flex;
+  align-items: center;
   gap: 24px;
   margin-bottom: 8px;
   font-size: 18px;
+}
+
+.hud-leaderboard-btn {
+  margin-left: auto;
+  background: transparent;
+  border: 1px solid #444;
+  color: #ffcc00;
+  font-family: inherit;
+  font-size: 12px;
+  letter-spacing: 1px;
+  padding: 6px 12px;
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.hud-leaderboard-btn:hover {
+  border-color: #ffcc00;
 }
 
 .alarm {
