@@ -444,7 +444,7 @@ function LeaderboardModal({ onClose }) {
     <div className="leaderboard-overlay" onClick={onClose}>
       <div className="leaderboard-modal" onClick={(e) => e.stopPropagation()}>
         <div className="leaderboard-modal-header">
-          <h2>Leaderboard</h2>
+          <h2>LV20 Leaderboard</h2>
           <button className="close-btn" onClick={onClose}>×</button>
         </div>
         {error && <p className="username-error">{error}</p>}
@@ -1009,7 +1009,7 @@ export default function App() {
           {hud.alarmed ? 'ALERT' : 'UNDETECTED'}
         </span>
         <button type="button" className="hud-leaderboard-btn" onClick={() => setShowFullLeaderboard(true)}>
-          Leaderboard
+          LV20 Leaderboard
         </button>
         {player && !player.user_id && (
           <button type="button" className="hud-leaderboard-btn" onClick={() => setShowLockForm(true)}>
@@ -1115,7 +1115,7 @@ export default function App() {
 
               {topLeaderboard.length > 0 && (
                 <div className="leaderboard-preview">
-                  <h3>Top Runs</h3>
+                  <h3>Top LV20 Runs</h3>
                   <ol>
                     {topLeaderboard.map((row, i) => (
                       <li key={row.display_name}>
@@ -1126,7 +1126,7 @@ export default function App() {
                     ))}
                   </ol>
                   <button type="button" className="link-btn" onClick={() => setShowFullLeaderboard(true)}>
-                    View full leaderboard
+                    View full LV20 leaderboard
                   </button>
                 </div>
               )}
