@@ -54,3 +54,33 @@ select
 from runs
 group by display_name
 order by best_time_ms asc;
+
+-- Per-level times, recorded on every level clear (not just a full
+-- 20-level run) so a leaderboard exists per level, separate from the
+-- full-clear speedrun leaderboard above.
+create table if not exists level_runs (
+  id uuid primary key default gen_random_uuid(),
+  player_id uuid not null references players(id),
+  display_name text not null,
+  level integer not null,
+  time_ms integer not null,
+  created_at timestamptz not null default now()
+);
+
+alter table level_runs enable row level security;
+
+drop policy if exists "level_runs_public_select" on level_runs;
+create policy "level_runs_public_select" on level_runs for select using (true);
+
+drop policy if exists "level_runs_public_insert" on level_runs;
+create policy "level_runs_public_insert" on level_runs for insert with check (true);
+
+create or replace view level_leaderboard as
+select
+  level,
+  display_name,
+  min(time_ms) as best_time_ms,
+  count(*) as runs
+from level_runs
+group by level, display_name
+order by level asc, best_time_ms asc;

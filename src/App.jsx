@@ -7,6 +7,8 @@ import {
   fetchFullLeaderboard,
   claimUsername,
   findPlayerByUserId,
+  submitLevelRun,
+  fetchLevelLeaderboard,
 } from './leaderboard'
 import { sendSignInLink, getSession, onAuthStateChange } from './auth'
 
@@ -465,6 +467,42 @@ function LeaderboardModal({ onClose }) {
   )
 }
 
+function LevelLeaderboardModal({ level, onClose }) {
+  const [rows, setRows] = useState(null)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    fetchLevelLeaderboard(level)
+      .then(setRows)
+      .catch(() => setError('Could not load the leaderboard.'))
+  }, [level])
+
+  return (
+    <div className="leaderboard-overlay" onClick={onClose}>
+      <div className="leaderboard-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="leaderboard-modal-header">
+          <h2>Level {level} Leaderboard</h2>
+          <button className="close-btn" onClick={onClose}>×</button>
+        </div>
+        {error && <p className="username-error">{error}</p>}
+        {!rows && !error && <p className="hint">Loading…</p>}
+        {rows && rows.length === 0 && <p className="hint">No runs yet — be the first.</p>}
+        {rows && rows.length > 0 && (
+          <ol className="leaderboard-full">
+            {rows.map((row, i) => (
+              <li key={row.display_name}>
+                <span className="rank">{i + 1}</span>
+                <span className="name">{row.display_name}</span>
+                <span className="time">{formatTime(row.best_time_ms)}</span>
+              </li>
+            ))}
+          </ol>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export default function App() {
   const canvasRef = useRef(null)
   const keysRef = useRef({})
@@ -480,6 +518,7 @@ export default function App() {
   const [phase, setPhase] = useState(() => (loadPlayer() ? 'playing' : 'menu'))
   const [level, setLevel] = useState(1)
   const [summary, setSummary] = useState(null)
+  const [showLevelLeaderboard, setShowLevelLeaderboard] = useState(null)
   const [equipped, setEquipped] = useState('fists')
   const [hitFlash, setHitFlash] = useState(0)
   const [isTouch, setIsTouch] = useState(false)
@@ -687,10 +726,19 @@ export default function App() {
               setLivesDisplay(s.lives)
             }
 
+            const p = playerRef.current
+            if (p) {
+              submitLevelRun({
+                playerId: p.id,
+                level: s.level,
+                displayName: p.display_name,
+                timeMs: elapsedMs,
+              }).catch((err) => console.error('Level leaderboard submit failed', err))
+            }
+
             if (s.level >= TOTAL_LEVELS) {
               setSummary({ counts, totalKills: s.ratingHistory.length, personalBest, bonusLife })
               setPhase('gameComplete')
-              const p = playerRef.current
               if (p) {
                 submitRun({
                   playerId: p.id,
@@ -1132,6 +1180,13 @@ export default function App() {
               <button className="cta" onClick={() => startLevelRef.current(level + 1)}>
                 Continue to Level {level + 1}
               </button>
+              <button
+                type="button"
+                className="link-btn"
+                onClick={() => setShowLevelLeaderboard(summary.clearedLevel)}
+              >
+                View Level {summary.clearedLevel} leaderboard
+              </button>
             </div>
           </div>
         )}
@@ -1164,6 +1219,13 @@ export default function App() {
               )}
               <button className="cta" onClick={() => startLevelRef.current.newGame()}>
                 Play Again
+              </button>
+              <button
+                type="button"
+                className="link-btn"
+                onClick={() => setShowLevelLeaderboard(TOTAL_LEVELS)}
+              >
+                View Level {TOTAL_LEVELS} leaderboard
               </button>
             </div>
           </div>
@@ -1206,6 +1268,12 @@ export default function App() {
       )}
       {showFullLeaderboard && (
         <LeaderboardModal onClose={() => setShowFullLeaderboard(false)} />
+      )}
+      {showLevelLeaderboard && (
+        <LevelLeaderboardModal
+          level={showLevelLeaderboard}
+          onClose={() => setShowLevelLeaderboard(null)}
+        />
       )}
       {showLockForm && phase === 'playing' && (
         <div className="leaderboard-overlay" onClick={() => setShowLockForm(false)}>

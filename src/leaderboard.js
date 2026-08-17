@@ -82,3 +82,26 @@ export async function fetchFullLeaderboard() {
   if (error) throw error
   return data
 }
+
+// Recorded on every level clear (not just a full 20-level run), so players
+// show up on a level's leaderboard as soon as they clear it.
+export async function submitLevelRun({ playerId, level, displayName, timeMs }) {
+  const { error } = await supabase.from('level_runs').insert({
+    player_id: playerId,
+    level,
+    display_name: displayName,
+    time_ms: Math.round(timeMs),
+  })
+  if (error) throw error
+}
+
+export async function fetchLevelLeaderboard(level, limit = 10) {
+  const { data, error } = await supabase
+    .from('level_leaderboard')
+    .select('display_name, best_time_ms, runs')
+    .eq('level', level)
+    .order('best_time_ms', { ascending: true })
+    .limit(limit)
+  if (error) throw error
+  return data
+}
