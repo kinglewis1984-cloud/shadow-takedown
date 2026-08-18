@@ -993,7 +993,7 @@ export default function App() {
           {player ? '🔒 Lock this username to your email' : 'Already locked a name? Sign in with email'}
         </button>
       )}
-      {lockStatus === 'sent' && <p className="hint">Check your email for a sign-in link.</p>}
+      {lockStatus === 'sent' && <p className="hint">Check your email/spam for a sign-in link.</p>}
       {lockStatus === 'error' && <p className="username-error">{lockError}</p>}
     </div>
   )
