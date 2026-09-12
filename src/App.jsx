@@ -1102,7 +1102,6 @@ export default function App() {
                       onChange={(e) => setUsernameInput(e.target.value)}
                       placeholder="Your name"
                       maxLength={16}
-                      autoFocus
                     />
                     <button className="cta" type="submit" disabled={registering || !usernameInput.trim()}>
                       {registering ? 'Checking…' : 'Start'}
